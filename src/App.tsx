@@ -2,14 +2,55 @@ import { useMemo, useState } from 'react'
 import MapView from './components/MapView'
 import YearChips from './components/YearChips'
 import Sidebar, { useSidebarOpen } from './components/Sidebar'
-import { trips, members, approvals } from './data/placeholder'
+import Login from './components/Login'
+import { trips as placeholderTrips, members as placeholderMembers, approvals as placeholderApprovals } from './data/placeholder'
+import { isSupabaseConfigured, supabase } from './lib/supabase'
+import { useAuth } from './hooks/useAuth'
+import { useTripsData } from './hooks/useTripsData'
+import type { Trip, Profile, Approval } from './types'
 
 const SIDEBAR_WIDTH = 340
 
-export default function App() {
-  const years = useMemo(() => [...new Set(trips.map((t) => t.year))].sort((a, b) => a - b), [])
+function LoadingScreen({ label }: { label: string }) {
+  return (
+    <div className="loading-veil">
+      <div className="loading-globe">🧭</div>
+      <p>{label}</p>
+    </div>
+  )
+}
 
-  // Default: every (future) year visible → overlay mode.
+function NotAllowlisted() {
+  return (
+    <div className="login-screen">
+      <div className="login-card glass">
+        <span className="brand-mark">🚫</span>
+        <h1>Not on the list</h1>
+        <p>This email isn't in the Atlas allowlist yet — ask Fabian to add it.</p>
+        <button type="button" onClick={() => supabase?.auth.signOut()}>
+          Sign out
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** Gates the map behind Supabase auth once VITE_SUPABASE_URL/ANON_KEY are set. */
+function ConnectedApp() {
+  const { loading: authLoading, session, profile } = useAuth()
+  const { trips, members, approvals, loading: dataLoading } = useTripsData()
+
+  if (authLoading) return <LoadingScreen label="Signing in…" />
+  if (!session) return <Login />
+  if (!profile) return <NotAllowlisted />
+  if (dataLoading) return <LoadingScreen label="Charting the atlas…" />
+  return <AtlasMap trips={trips} members={members} approvals={approvals} />
+}
+
+function AtlasMap({ trips, members, approvals }: { trips: Trip[]; members: Profile[]; approvals: Approval[] }) {
+  const years = useMemo(() => [...new Set(trips.map((t) => t.year))].sort((a, b) => a - b), [trips])
+
+  // Default: every year visible → overlay mode.
   const [activeYears, setActiveYears] = useState<Set<number>>(() => new Set(years))
   const [hoveredTripId, setHoveredTripId] = useState<string | null>(null)
   const [focus, setFocus] = useState<{ tripId: string; nonce: number } | null>(null)
@@ -62,4 +103,11 @@ export default function App() {
       />
     </div>
   )
+}
+
+export default function App() {
+  if (!isSupabaseConfigured) {
+    return <AtlasMap trips={placeholderTrips} members={placeholderMembers} approvals={placeholderApprovals} />
+  }
+  return <ConnectedApp />
 }
