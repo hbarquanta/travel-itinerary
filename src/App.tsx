@@ -8,6 +8,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { useAuth } from './hooks/useAuth'
 import { useTripsData } from './hooks/useTripsData'
 import type { Trip, Profile, Approval } from './types'
+import { yearGroupOf } from './types'
 
 const SIDEBAR_WIDTH = 340
 
@@ -48,15 +49,22 @@ function ConnectedApp() {
 }
 
 function AtlasMap({ trips, members, approvals }: { trips: Trip[]; members: Profile[]; approvals: Approval[] }) {
-  const years = useMemo(() => [...new Set(trips.map((t) => t.year))].sort((a, b) => a - b), [trips])
+  const years = useMemo(() => {
+    const bySortKey = new Map<string, number>()
+    for (const t of trips) {
+      const label = yearGroupOf(t)
+      if (!bySortKey.has(label)) bySortKey.set(label, t.year)
+    }
+    return [...bySortKey.entries()].sort(([a, ay], [b, by]) => ay - by || a.localeCompare(b)).map(([label]) => label)
+  }, [trips])
 
   // Default: every year visible → overlay mode.
-  const [activeYears, setActiveYears] = useState<Set<number>>(() => new Set(years))
+  const [activeYears, setActiveYears] = useState<Set<string>>(() => new Set(years))
   const [hoveredTripId, setHoveredTripId] = useState<string | null>(null)
   const [focus, setFocus] = useState<{ tripId: string; nonce: number } | null>(null)
   const [sidebarOpen, toggleSidebar] = useSidebarOpen()
 
-  const toggleYear = (year: number) =>
+  const toggleYear = (year: string) =>
     setActiveYears((prev) => {
       const next = new Set(prev)
       if (next.has(year)) next.delete(year)
@@ -66,8 +74,8 @@ function AtlasMap({ trips, members, approvals }: { trips: Trip[]; members: Profi
 
   const focusTrip = (tripId: string) => {
     setFocus((f) => ({ tripId, nonce: (f?.nonce ?? 0) + 1 }))
-    const year = trips.find((t) => t.id === tripId)?.year
-    if (year !== undefined && !activeYears.has(year)) toggleYear(year)
+    const trip = trips.find((t) => t.id === tripId)
+    if (trip && !activeYears.has(yearGroupOf(trip))) toggleYear(yearGroupOf(trip))
   }
 
   return (

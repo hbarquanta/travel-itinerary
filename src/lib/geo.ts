@@ -42,12 +42,13 @@ export interface RouteSegment {
 }
 
 /**
- * A flight leg is drawn as a distinct angular (straight-segment) chevron —
- * bowed toward higher latitude — rather than the smooth great-circle curve
- * used for ground travel, so "we flew here" reads differently on the map
- * from "we took a train/road here".
+ * A flight leg is drawn as a smooth curved arc, bowed toward higher
+ * latitude (like a conventional flight-path graphic), rather than the
+ * great-circle curve used for ground travel — dashed styling in MapView
+ * is what actually distinguishes "we flew here" from "we took a
+ * train/road here"; this curve just gives it a plane-like sweep.
  */
-export function flightPath(a: LngLat, b: LngLat): LngLat[] {
+export function flightPath(a: LngLat, b: LngLat, steps = 64): LngLat[] {
   const dx = b[0] - a[0]
   const dy = b[1] - a[1]
   const dist = Math.hypot(dx, dy) || 1e-6
@@ -58,13 +59,23 @@ export function flightPath(a: LngLat, b: LngLat): LngLat[] {
     py = -py
   }
   const bump = dist * 0.13
-  const mid: LngLat = [(a[0] + b[0]) / 2 + px * bump, (a[1] + b[1]) / 2 + py * bump]
-  return [a, mid, b]
+  const ctrl: LngLat = [(a[0] + b[0]) / 2 + px * bump, (a[1] + b[1]) / 2 + py * bump]
+
+  const points: LngLat[] = []
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    const mt = 1 - t
+    points.push([
+      mt * mt * a[0] + 2 * mt * t * ctrl[0] + t * t * b[0],
+      mt * mt * a[1] + 2 * mt * t * ctrl[1] + t * t * b[1],
+    ])
+  }
+  return points
 }
 
 /**
  * Per-leg route segments for a trip: a great-circle curve for ground travel,
- * or an angular flight path when the destination stop's `travelMode` is
+ * or a bowed flight curve when the destination stop's `travelMode` is
  * 'flight'. Longitudes are unwrapped across the whole sequence so segments
  * never jump across the antimeridian.
  */
@@ -107,6 +118,22 @@ export function concatSegments(segments: RouteSegment[]): LngLat[] {
 /** Point roughly halfway along a route line — used to place the year badge. */
 export function routeMidpoint(coords: LngLat[]): LngLat {
   return coords[Math.floor(coords.length / 2)] ?? coords[0]
+}
+
+/** Approximate great-circle length of a coordinate list, in kilometres. */
+export function coordsLengthKm(coords: LngLat[]): number {
+  const R = 6371
+  let total = 0
+  for (let i = 1; i < coords.length; i++) {
+    const [lng1, lat1] = coords[i - 1]
+    const [lng2, lat2] = coords[i]
+    const dLat = rad(lat2 - lat1)
+    const dLng = rad(lng2 - lng1)
+    const h =
+      Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2
+    total += 2 * R * Math.asin(Math.sqrt(h))
+  }
+  return total
 }
 
 /**

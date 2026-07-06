@@ -3,14 +3,15 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { FeatureCollection, Point } from 'geojson'
 import type { Trip } from '../types'
-import { tripRouteSegments, concatSegments, routeMidpoint, sliceCoordinates, type LngLat } from '../lib/geo'
+import { yearGroupOf } from '../types'
+import { tripRouteSegments, concatSegments, routeMidpoint, sliceCoordinates, coordsLengthKm, type LngLat } from '../lib/geo'
 
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark'
 const DRAW_IN_MS = 2000
 
 interface MapViewProps {
   trips: Trip[]
-  activeYears: Set<number>
+  activeYears: Set<string>
   hoveredTripId: string | null
   onHoverTrip: (tripId: string | null) => void
   /** Bump `nonce` to fly to a trip even if the id is unchanged. */
@@ -45,10 +46,19 @@ function popupHtml(p: Record<string, string>): string {
 interface SegmentMeta {
   id: string
   tripId: string
-  year: number
+  yearGroup: string
   color: string
   mode: 'flight' | 'ground'
   coords: LngLat[]
+}
+
+/** One draw-in animation per trip: a single ratio sweeping the whole
+ *  journey start-to-end, with each leg's share proportional to its real
+ *  distance so the "pen" moves at roughly constant speed. */
+interface TripAnim {
+  ratio: number
+  totalLength: number
+  segments: { id: string; length: number; cumulative: number }[]
 }
 
 function buildStopsData(trips: Trip[]): FeatureCollection {
@@ -59,7 +69,7 @@ function buildStopsData(trips: Trip[]): FeatureCollection {
         type: 'Feature' as const,
         properties: {
           tripId: t.id,
-          year: t.year,
+          yearGroup: yearGroupOf(t),
           color: t.color,
           name: s.name,
           notes: s.notes ?? '',
@@ -73,10 +83,20 @@ function buildStopsData(trips: Trip[]): FeatureCollection {
   }
 }
 
-function segmentsDataAtRatios(
+function segmentRatioFor(anim: TripAnim | undefined, segId: string): number {
+  if (!anim || anim.totalLength <= 0) return 1
+  const segMeta = anim.segments.find((s) => s.id === segId)
+  if (!segMeta) return 1
+  const target = anim.ratio * anim.totalLength
+  if (segMeta.cumulative + segMeta.length <= target) return 1
+  if (segMeta.cumulative >= target) return 0
+  return (target - segMeta.cumulative) / segMeta.length
+}
+
+function segmentsFeatureCollection(
   segments: SegmentMeta[],
   mode: 'flight' | 'ground',
-  ratios: Map<string, number>,
+  tripAnims: Map<string, TripAnim>,
 ): FeatureCollection {
   return {
     type: 'FeatureCollection',
@@ -84,8 +104,11 @@ function segmentsDataAtRatios(
       .filter((s) => s.mode === mode)
       .map((s) => ({
         type: 'Feature',
-        properties: { tripId: s.tripId, year: s.year, color: s.color },
-        geometry: { type: 'LineString', coordinates: sliceCoordinates(s.coords, ratios.get(s.id) ?? 1) },
+        properties: { tripId: s.tripId, yearGroup: s.yearGroup, color: s.color },
+        geometry: {
+          type: 'LineString',
+          coordinates: sliceCoordinates(s.coords, segmentRatioFor(tripAnims.get(s.tripId), s.id)),
+        },
       })),
   }
 }
@@ -108,7 +131,7 @@ export default function MapView({
   const mapRef = useRef<maplibregl.Map | null>(null)
   const badgeMarkers = useRef<Map<string, maplibregl.Marker>>(new Map())
   const segmentsRef = useRef<SegmentMeta[]>([])
-  const drawRatios = useRef<Map<string, number>>(new Map())
+  const tripAnimsRef = useRef<Map<string, TripAnim>>(new Map())
   const prevVisible = useRef<Set<string>>(new Set())
   const [ready, setReady] = useState(false)
 
@@ -129,27 +152,42 @@ export default function MapView({
 
     const tripFullCoords = new Map<string, LngLat[]>()
     const allSegments: SegmentMeta[] = []
+    const anims = new Map<string, TripAnim>()
     for (const trip of trips) {
       if (trip.stops.length < 2) continue
       const segs = tripRouteSegments(trip.stops)
       tripFullCoords.set(trip.id, concatSegments(segs))
+
+      let cumulative = 0
+      const segMetaList: TripAnim['segments'] = []
       segs.forEach((seg, i) => {
+        const id = `${trip.id}-${i}`
+        const length = coordsLengthKm(seg.coords) || 0.001
+        segMetaList.push({ id, length, cumulative })
+        cumulative += length
         allSegments.push({
-          id: `${trip.id}-${i}`,
+          id,
           tripId: trip.id,
-          year: trip.year,
+          yearGroup: yearGroupOf(trip),
           color: trip.color,
           mode: seg.mode,
           coords: seg.coords,
         })
       })
+      anims.set(trip.id, { ratio: 0, totalLength: cumulative, segments: segMetaList })
     }
     segmentsRef.current = allSegments
-    drawRatios.current = new Map(allSegments.map((s) => [s.id, 0]))
+    tripAnimsRef.current = anims
 
     map.on('load', () => {
-      map.addSource('routes', { type: 'geojson', data: segmentsDataAtRatios(segmentsRef.current, 'ground', drawRatios.current) })
-      map.addSource('flights', { type: 'geojson', data: segmentsDataAtRatios(segmentsRef.current, 'flight', drawRatios.current) })
+      map.addSource('routes', {
+        type: 'geojson',
+        data: segmentsFeatureCollection(segmentsRef.current, 'ground', tripAnimsRef.current),
+      })
+      map.addSource('flights', {
+        type: 'geojson',
+        data: segmentsFeatureCollection(segmentsRef.current, 'flight', tripAnimsRef.current),
+      })
       map.addSource('stops', { type: 'geojson', data: buildStopsData(trips) })
 
       map.addLayer({
@@ -239,7 +277,7 @@ export default function MapView({
         if (trip.stops.length < 2) continue
         const el = document.createElement('div')
         el.className = 'year-badge'
-        el.textContent = String(trip.year)
+        el.textContent = yearGroupOf(trip)
         el.style.setProperty('--trip-color', trip.color)
         el.addEventListener('mouseenter', () => hoverCb.current(trip.id))
         el.addEventListener('mouseleave', () => hoverCb.current(null))
@@ -297,18 +335,17 @@ export default function MapView({
         }
 
         let drawChanged = false
-        for (const seg of segmentsRef.current) {
-          const ratio = drawRatios.current.get(seg.id) ?? 1
-          if (ratio < 1) {
-            drawRatios.current.set(seg.id, Math.min(1, ratio + dt / DRAW_IN_MS))
+        for (const anim of tripAnimsRef.current.values()) {
+          if (anim.ratio < 1) {
+            anim.ratio = Math.min(1, anim.ratio + dt / DRAW_IN_MS)
             drawChanged = true
           }
         }
         if (drawChanged) {
           const routesSrc = map.getSource('routes') as maplibregl.GeoJSONSource | undefined
           const flightsSrc = map.getSource('flights') as maplibregl.GeoJSONSource | undefined
-          routesSrc?.setData(segmentsDataAtRatios(segmentsRef.current, 'ground', drawRatios.current))
-          flightsSrc?.setData(segmentsDataAtRatios(segmentsRef.current, 'flight', drawRatios.current))
+          routesSrc?.setData(segmentsFeatureCollection(segmentsRef.current, 'ground', tripAnimsRef.current))
+          flightsSrc?.setData(segmentsFeatureCollection(segmentsRef.current, 'flight', tripAnimsRef.current))
         }
 
         requestAnimationFrame(animate)
@@ -333,23 +370,23 @@ export default function MapView({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
-    const years = [...activeYears]
-    const filter: maplibregl.FilterSpecification = ['in', ['get', 'year'], ['literal', years]]
+    const groups = [...activeYears]
+    const filter: maplibregl.FilterSpecification = ['in', ['get', 'yearGroup'], ['literal', groups]]
     for (const layer of ['route-glow', 'route-line', 'route-flow', 'flight-glow', 'flight-line', 'stop-glow', 'stop-core']) {
       map.setFilter(layer, filter)
     }
     for (const trip of trips) {
       const marker = badgeMarkers.current.get(trip.id)
-      if (marker) marker.getElement().classList.toggle('hidden', !activeYears.has(trip.year))
+      if (marker) marker.getElement().classList.toggle('hidden', !activeYears.has(yearGroupOf(trip)))
     }
 
-    const visibleIds = new Set(trips.filter((t) => activeYears.has(t.year)).map((t) => t.id))
-    for (const seg of segmentsRef.current) {
-      if (visibleIds.has(seg.tripId) && !prevVisible.current.has(seg.tripId)) drawRatios.current.set(seg.id, 0)
+    const visibleIds = new Set(trips.filter((t) => activeYears.has(yearGroupOf(t))).map((t) => t.id))
+    for (const [tripId, anim] of tripAnimsRef.current) {
+      if (visibleIds.has(tripId) && !prevVisible.current.has(tripId)) anim.ratio = 0
     }
     prevVisible.current = visibleIds
 
-    const visible = trips.filter((t) => activeYears.has(t.year))
+    const visible = trips.filter((t) => activeYears.has(yearGroupOf(t)))
     if (visible.length === 0) return
     const bounds = new maplibregl.LngLatBounds()
     for (const t of visible) for (const s of t.stops) bounds.extend([s.lng, s.lat])

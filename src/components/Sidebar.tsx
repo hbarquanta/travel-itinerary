@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Trip, Profile, Approval, TripStatus } from '../types'
+import { yearGroupOf } from '../types'
 
 const STATUS_META: Record<TripStatus, { icon: string; label: string }> = {
   idea: { icon: '💡', label: 'Idea' },
@@ -21,7 +22,7 @@ interface SidebarProps {
   trips: Trip[]
   members: Profile[]
   approvals: Approval[]
-  activeYears: Set<number>
+  activeYears: Set<string>
   hoveredTripId: string | null
   onHoverTrip: (tripId: string | null) => void
   onFocusTrip: (tripId: string) => void
@@ -41,12 +42,15 @@ export default function Sidebar({
   onToggleOpen,
 }: SidebarProps) {
   const byYear = useMemo(() => {
-    const groups = new Map<number, Trip[]>()
+    const groups = new Map<string, { sortKey: number; trips: Trip[] }>()
     for (const trip of trips) {
-      if (!groups.has(trip.year)) groups.set(trip.year, [])
-      groups.get(trip.year)!.push(trip)
+      const label = yearGroupOf(trip)
+      if (!groups.has(label)) groups.set(label, { sortKey: trip.year, trips: [] })
+      groups.get(label)!.trips.push(trip)
     }
-    return [...groups.entries()].sort(([a], [b]) => a - b)
+    return [...groups.entries()].sort(
+      ([labelA, a], [labelB, b]) => a.sortKey - b.sortKey || labelA.localeCompare(labelB),
+    )
   }, [trips])
 
   return (
@@ -67,10 +71,10 @@ export default function Sidebar({
           </span>
         </header>
         <div className="sidebar-scroll">
-          {byYear.map(([year, yearTrips]) => (
+          {byYear.map(([year, group]) => (
             <section key={year} className={activeYears.has(year) ? '' : 'year-off'}>
               <h3 className="year-heading">{year}</h3>
-              {yearTrips.map((trip) => (
+              {group.trips.map((trip) => (
                 <TripCard
                   key={trip.id}
                   trip={trip}

@@ -39,6 +39,17 @@ export interface Trip {
   color: string
   description?: string | null
   stops: Stop[]
+  /**
+   * Overrides the year chip/grouping label for open-ended trips (e.g.
+   * '2030+') without a fixed year. `year` still holds a real number for
+   * chronological sorting; this is purely a display/grouping override.
+   */
+  yearGroup?: string
+}
+
+/** The chip/sidebar grouping label for a trip: its yearGroup override, or its year. */
+export function yearGroupOf(trip: Trip): string {
+  return trip.yearGroup ?? String(trip.year)
 }
 
 export interface Approval {

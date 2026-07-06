@@ -1,7 +1,7 @@
 interface YearChipsProps {
-  years: number[]
-  activeYears: Set<number>
-  onToggle: (year: number) => void
+  years: string[]
+  activeYears: Set<string>
+  onToggle: (year: string) => void
 }
 
 export default function YearChips({ years, activeYears, onToggle }: YearChipsProps) {
