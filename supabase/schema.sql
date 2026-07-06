@@ -140,11 +140,36 @@ alter table stops enable row level security;
 alter table ideas enable row level security;
 alter table approvals enable row level security;
 
+-- Policies on `profiles` can't subquery `profiles` directly — Postgres has
+-- to re-run RLS on that inner query too, which re-triggers the same policy
+-- forever ("infinite recursion detected in policy for relation profiles").
+-- These security-definer helpers run as the (RLS-exempt) function owner, so
+-- the inner lookup bypasses RLS instead of recursing into it.
+create or replace function is_allowlisted(uid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from profiles where id = uid);
+$$;
+
+create or replace function is_admin_user(uid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from profiles where id = uid and is_admin);
+$$;
+
 -- profiles: any allowlisted user (i.e. anyone who already has a profile row)
 -- can read everyone's profile; you can only update your own row.
 drop policy if exists profiles_select on profiles;
 create policy profiles_select on profiles for select
-  using (auth.uid() in (select id from profiles));
+  using (is_allowlisted(auth.uid()));
 
 drop policy if exists profiles_update_self on profiles;
 create policy profiles_update_self on profiles for update
@@ -153,32 +178,32 @@ create policy profiles_update_self on profiles for update
 -- trips: everyone allowlisted can read; only the admin can write.
 drop policy if exists trips_select on trips;
 create policy trips_select on trips for select
-  using (auth.uid() in (select id from profiles));
+  using (is_allowlisted(auth.uid()));
 
 drop policy if exists trips_write_admin on trips;
 create policy trips_write_admin on trips for all
-  using (auth.uid() in (select id from profiles where is_admin))
-  with check (auth.uid() in (select id from profiles where is_admin));
+  using (is_admin_user(auth.uid()))
+  with check (is_admin_user(auth.uid()));
 
 -- stops: same shape as trips.
 drop policy if exists stops_select on stops;
 create policy stops_select on stops for select
-  using (auth.uid() in (select id from profiles));
+  using (is_allowlisted(auth.uid()));
 
 drop policy if exists stops_write_admin on stops;
 create policy stops_write_admin on stops for all
-  using (auth.uid() in (select id from profiles where is_admin))
-  with check (auth.uid() in (select id from profiles where is_admin));
+  using (is_admin_user(auth.uid()))
+  with check (is_admin_user(auth.uid()));
 
 -- ideas: everyone allowlisted can read; members can create/edit/delete
 -- their own idea pins (but not each other's).
 drop policy if exists ideas_select on ideas;
 create policy ideas_select on ideas for select
-  using (auth.uid() in (select id from profiles));
+  using (is_allowlisted(auth.uid()));
 
 drop policy if exists ideas_insert on ideas;
 create policy ideas_insert on ideas for insert
-  with check (auth.uid() in (select id from profiles) and created_by = auth.uid());
+  with check (is_allowlisted(auth.uid()) and created_by = auth.uid());
 
 drop policy if exists ideas_modify_own on ideas;
 create policy ideas_modify_own on ideas for update
@@ -192,7 +217,7 @@ create policy ideas_delete_own on ideas for delete
 -- approval rows (tap your own avatar, not someone else's).
 drop policy if exists approvals_select on approvals;
 create policy approvals_select on approvals for select
-  using (auth.uid() in (select id from profiles));
+  using (is_allowlisted(auth.uid()));
 
 drop policy if exists approvals_insert on approvals;
 create policy approvals_insert on approvals for insert
