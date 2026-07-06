@@ -20,16 +20,17 @@ export function useTripsData() {
   }, [])
 
   useEffect(() => {
-    if (!supabase) return
+    const db = supabase
+    if (!db) return
     reload()
-    const channel = supabase
+    const channel = db
       .channel('atlas-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'approvals' }, reload)
       .subscribe()
     return () => {
-      supabase.removeChannel(channel)
+      db.removeChannel(channel)
     }
   }, [reload])
 
