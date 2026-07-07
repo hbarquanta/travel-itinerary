@@ -7,8 +7,8 @@
   --panel-border: rgba(255, 255, 255, 0.09);
   --text: #e7eaf2;
   --text-dim: #8b93a7;
-  --accent-a: #7c3aed;
-  --accent-b: #06b6d4;
+  --accent-a: #f59e0b;
+  --accent-b: #dc2626;
   --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
   --radius: 16px;
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
@@ -83,7 +83,7 @@ body,
   gap: 14px;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at center, rgba(124, 58, 237, 0.14), transparent 60%),
+    radial-gradient(ellipse at center, rgba(245, 158, 11, 0.14), transparent 60%),
     var(--bg);
   transition: opacity 0.6s ease, visibility 0.6s ease;
 }
@@ -115,7 +115,7 @@ body,
 .loading-globe {
   font-size: 48px;
   animation: drift 3.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 20px rgba(6, 182, 212, 0.55));
+  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.55));
 }
 
 @keyframes drift {
@@ -163,7 +163,7 @@ body,
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse at center, rgba(124, 58, 237, 0.14), transparent 60%),
+    radial-gradient(ellipse at center, rgba(245, 158, 11, 0.14), transparent 60%),
     var(--bg);
 }
 
@@ -180,7 +180,7 @@ body,
 .login-card .brand-mark {
   font-size: 34px;
   margin-bottom: 6px;
-  filter: drop-shadow(0 0 14px rgba(6, 182, 212, 0.55));
+  filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.55));
 }
 
 .login-card h1 {
@@ -265,7 +265,7 @@ body,
 
 .brand-mark {
   font-size: 26px;
-  filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.6));
+  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.6));
 }
 
 .brand h1 {
@@ -336,7 +336,7 @@ body,
 .chip.active {
   color: #fff;
   background: var(--accent-gradient);
-  box-shadow: 0 4px 18px rgba(124, 58, 237, 0.45);
+  box-shadow: 0 4px 18px rgba(220, 38, 38, 0.45);
 }
 
 .chip.active:active,
@@ -1118,7 +1118,7 @@ section.year-off {
   border-radius: 50%;
   border: 2px solid #fff;
   background: var(--accent-b);
-  box-shadow: 0 0 12px rgba(6, 182, 212, 0.7);
+  box-shadow: 0 0 12px rgba(220, 38, 38, 0.7);
   cursor: grab;
 }
 

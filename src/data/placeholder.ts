@@ -16,6 +16,35 @@ export const members: Profile[] = [
 
 export const trips: Trip[] = [
   {
+    id: 't-balkans-2025',
+    title: 'Balkans Road Trip',
+    year: 2025,
+    status: 'past',
+    dateStart: null,
+    dateEnd: null,
+    datesConfirmed: true,
+    color: '#f59e0b',
+    description:
+      'Dalmatian coast down through Montenegro into Bosnia — Graz to Šibenik, Dubrovnik, the Bay of Kotor, Podgorica, Nikšić, Mostar, Sarajevo, Banja Luka and back.',
+    stops: [
+      { id: 's-bal25-0', tripId: 't-balkans-2025', name: 'Graz', lat: 47.0707, lng: 15.4395, orderIndex: 0 },
+      { id: 's-bal25-1', tripId: 't-balkans-2025', name: 'Wildon', lat: 46.8886, lng: 15.5211, orderIndex: 1 },
+      { id: 's-bal25-2', tripId: 't-balkans-2025', name: 'Šibenik', lat: 43.735, lng: 15.8952, orderIndex: 2 },
+      { id: 's-bal25-3', tripId: 't-balkans-2025', name: 'Dubrovnik', lat: 42.6507, lng: 18.0944, orderIndex: 3 },
+      { id: 's-bal25-4', tripId: 't-balkans-2025', name: 'Herceg Novi', lat: 42.4531, lng: 18.5375, orderIndex: 4 },
+      { id: 's-bal25-5', tripId: 't-balkans-2025', name: 'Kotor', lat: 42.4247, lng: 18.7712, orderIndex: 5 },
+      { id: 's-bal25-6', tripId: 't-balkans-2025', name: 'Budva', lat: 42.2911, lng: 18.84, orderIndex: 6 },
+      { id: 's-bal25-7', tripId: 't-balkans-2025', name: 'Cetinje', lat: 42.3931, lng: 18.9169, orderIndex: 7, notes: 'The old royal capital.' },
+      { id: 's-bal25-8', tripId: 't-balkans-2025', name: 'Podgorica', lat: 42.4304, lng: 19.2594, orderIndex: 8 },
+      { id: 's-bal25-9', tripId: 't-balkans-2025', name: 'Nikšić', lat: 42.7731, lng: 18.95, orderIndex: 9 },
+      { id: 's-bal25-10', tripId: 't-balkans-2025', name: 'Mostar', lat: 43.3438, lng: 17.8078, orderIndex: 10 },
+      { id: 's-bal25-11', tripId: 't-balkans-2025', name: 'Sarajevo', lat: 43.8563, lng: 18.4131, orderIndex: 11 },
+      { id: 's-bal25-12', tripId: 't-balkans-2025', name: 'Banja Luka', lat: 44.7722, lng: 17.191, orderIndex: 12 },
+      { id: 's-bal25-13', tripId: 't-balkans-2025', name: 'Wildon', lat: 46.8886, lng: 15.5211, orderIndex: 13, notes: 'On the way home.' },
+      { id: 's-bal25-14', tripId: 't-balkans-2025', name: 'Graz', lat: 47.0707, lng: 15.4395, orderIndex: 14 },
+    ],
+  },
+  {
     id: 't-poland',
     title: 'Western Poland',
     year: 2026,

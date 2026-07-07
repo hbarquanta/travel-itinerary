@@ -120,8 +120,12 @@ function AtlasMap({
 
   const ideaAuthors = useMemo(() => new Map(members.map((m) => [m.id, m.color])), [members])
 
-  // Default: every year visible → overlay mode.
-  const [activeYears, setActiveYears] = useState<Set<string>>(() => new Set(years))
+  // Default: just 2025 (a finished trip) as a showcase, so a first-time
+  // visitor sees what the app does without spoiling future years. Falls
+  // back to every year if 2025 isn't in the data.
+  const [activeYears, setActiveYears] = useState<Set<string>>(() =>
+    years.includes('2025') ? new Set(['2025']) : new Set(years),
+  )
   const [hoveredTripId, setHoveredTripId] = useState<string | null>(null)
   const [focus, setFocus] = useState<{ tripId: string; nonce: number } | null>(null)
   const [sidebarOpen, toggleSidebar] = useSidebarOpen()
