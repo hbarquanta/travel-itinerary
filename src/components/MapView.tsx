@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import type { FeatureCollection, Point } from 'geojson'
 import type { Trip, Idea } from '../types'
 import { yearGroupOf } from '../types'
-import { tripRouteSegments, concatSegments, routeMidpoint, sliceCoordinates, coordsLengthKm, type LngLat } from '../lib/geo'
+import { tripRouteSegments, concatSegments, topmostPoint, sliceCoordinates, coordsLengthKm, type LngLat } from '../lib/geo'
 import type { EditStop } from '../lib/editSession'
 
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark'
@@ -323,7 +323,7 @@ export default function MapView({
         el.addEventListener('mouseenter', () => hoverCb.current(trip.id))
         el.addEventListener('mouseleave', () => hoverCb.current(null))
         const marker = new maplibregl.Marker({ element: el, anchor: 'center', offset: [0, -18] })
-          .setLngLat(routeMidpoint(tripFullCoords.get(trip.id) ?? []))
+          .setLngLat(topmostPoint(tripFullCoords.get(trip.id) ?? []))
           .addTo(map)
         badgeMarkers.current.set(trip.id, marker)
       }

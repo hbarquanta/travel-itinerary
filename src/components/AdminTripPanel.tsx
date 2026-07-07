@@ -66,6 +66,15 @@ export default function AdminTripPanel({
           </label>
         </div>
 
+        <label className="admin-field">
+          <span>Year label override</span>
+          <input
+            value={session.yearGroup}
+            onChange={(e) => onChange({ yearGroup: e.target.value })}
+            placeholder="Leave blank to just show the year, e.g. 2030+"
+          />
+        </label>
+
         <div className="admin-field">
           <span>Color</span>
           <div className="color-swatches">

@@ -39,6 +39,11 @@ is wired up (below), it switches to real data + magic-link auth automatically.
    so the deployed build can reach Supabase.
 6. If a friend's real email isn't `@example.com` yet, edit the `insert into
    allowed_users (...)` block in `supabase/schema.sql` and re-run the file.
+7. Sign in once via the magic link (so your `profiles` row exists), then run
+   [supabase/seed.sql](supabase/seed.sql) **once** in the SQL editor to load
+   the group's actual trip data. Unlike `schema.sql` this is **not**
+   idempotent — running it twice creates duplicate trips. From then on, use
+   the in-app admin trip editor to add/change trips instead.
 
 Restart `npm run dev` after creating `.env.local` — the app then requires a
 magic-link sign-in and reads/writes real data with realtime updates.

@@ -101,6 +101,10 @@ create table if not exists trips (
   id uuid primary key default gen_random_uuid(),
   title text not null,
   year int not null,
+  -- Overrides the year chip/grouping label (e.g. '2030+') for open-ended
+  -- trips without a fixed year; `year` still holds a real number for
+  -- chronological sorting. Null means "just show the year".
+  year_group text,
   status trip_status not null default 'idea',
   date_start date,
   date_end date,
@@ -110,6 +114,8 @@ create table if not exists trips (
   created_by uuid references profiles (id),
   created_at timestamptz not null default now()
 );
+
+alter table trips add column if not exists year_group text;
 
 create table if not exists stops (
   id uuid primary key default gen_random_uuid(),

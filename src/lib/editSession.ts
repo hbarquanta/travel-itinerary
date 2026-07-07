@@ -25,6 +25,8 @@ export interface EditSession {
   promotingIdeaId: string | null
   title: string
   year: number
+  /** Overrides the chip/grouping label (e.g. '2030+'); blank means "just show the year". */
+  yearGroup: string
   status: TripStatus
   color: string
   dateStart: string
@@ -54,6 +56,7 @@ export function newEditSession(existingColors: string[], defaultYear: number): E
     promotingIdeaId: null,
     title: '',
     year: defaultYear,
+    yearGroup: '',
     status: 'planned',
     color: nextPaletteColor(existingColors),
     dateStart: '',
@@ -71,6 +74,7 @@ export function editSessionFromTrip(trip: Trip): EditSession {
     promotingIdeaId: null,
     title: trip.title,
     year: trip.year,
+    yearGroup: trip.yearGroup ?? '',
     status: trip.status,
     color: trip.color,
     dateStart: trip.dateStart ?? '',
@@ -99,6 +103,7 @@ export function editSessionFromIdea(idea: Idea, existingColors: string[], fallba
     promotingIdeaId: idea.id,
     title: idea.title,
     year: idea.yearSuggestion ?? fallbackYear,
+    yearGroup: '',
     status: 'planned',
     color: nextPaletteColor(existingColors),
     dateStart: '',
@@ -127,6 +132,7 @@ export async function saveEditSession(session: EditSession, userId: string): Pro
   const tripInput = {
     title: session.title.trim(),
     year: session.year,
+    yearGroup: session.yearGroup.trim() || null,
     status: session.status,
     dateStart: session.dateStart || null,
     dateEnd: session.dateEnd || null,

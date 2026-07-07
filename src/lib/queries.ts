@@ -10,6 +10,7 @@ interface TripRow {
   id: string
   title: string
   year: number
+  year_group: string | null
   status: TripStatus
   date_start: string | null
   date_end: string | null
@@ -85,7 +86,7 @@ export async function fetchTrips(): Promise<Trip[]> {
   const db = client()
   const { data: tripRows, error: tripErr } = await db
     .from('trips')
-    .select('id, title, year, status, date_start, date_end, dates_confirmed, color, description')
+    .select('id, title, year, year_group, status, date_start, date_end, dates_confirmed, color, description')
     .order('year', { ascending: true })
   if (tripErr) throw tripErr
 
@@ -106,6 +107,7 @@ export async function fetchTrips(): Promise<Trip[]> {
     id: row.id,
     title: row.title,
     year: row.year,
+    yearGroup: row.year_group ?? undefined,
     status: row.status,
     dateStart: row.date_start,
     dateEnd: row.date_end,
@@ -201,6 +203,7 @@ export async function deleteIdea(id: string) {
 export interface TripInput {
   title: string
   year: number
+  yearGroup: string | null
   status: TripStatus
   dateStart: string | null
   dateEnd: string | null
@@ -216,6 +219,7 @@ export async function createTrip(input: TripInput, createdBy: string): Promise<s
     .insert({
       title: input.title,
       year: input.year,
+      year_group: input.yearGroup,
       status: input.status,
       date_start: input.dateStart,
       date_end: input.dateEnd,
@@ -237,6 +241,7 @@ export async function updateTrip(id: string, input: TripInput) {
     .update({
       title: input.title,
       year: input.year,
+      year_group: input.yearGroup,
       status: input.status,
       date_start: input.dateStart,
       date_end: input.dateEnd,

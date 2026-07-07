@@ -115,9 +115,15 @@ export function concatSegments(segments: RouteSegment[]): LngLat[] {
   return out
 }
 
-/** Point roughly halfway along a route line — used to place the year badge. */
-export function routeMidpoint(coords: LngLat[]): LngLat {
-  return coords[Math.floor(coords.length / 2)] ?? coords[0]
+/**
+ * The northernmost (highest-latitude) point of a route — used to place the
+ * year badge near the top of the trip's visual footprint on the map,
+ * rather than at its geometric midpoint (which can land anywhere,
+ * including empty ocean, depending on the route's shape).
+ */
+export function topmostPoint(coords: LngLat[]): LngLat {
+  if (coords.length === 0) return [0, 0]
+  return coords.reduce((top, p) => (p[1] > top[1] ? p : top), coords[0])
 }
 
 /** Approximate great-circle length of a coordinate list, in kilometres. */
