@@ -3,11 +3,18 @@ import MapView from './components/MapView'
 import YearChips from './components/YearChips'
 import Sidebar, { useSidebarOpen } from './components/Sidebar'
 import Login from './components/Login'
-import { trips as placeholderTrips, members as placeholderMembers, approvals as placeholderApprovals } from './data/placeholder'
+import AddIdeaForm from './components/AddIdeaForm'
+import {
+  trips as placeholderTrips,
+  members as placeholderMembers,
+  approvals as placeholderApprovals,
+  ideas as placeholderIdeas,
+} from './data/placeholder'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { useAuth } from './hooks/useAuth'
 import { useTripsData } from './hooks/useTripsData'
-import type { Trip, Profile, Approval } from './types'
+import { addApproval, removeApproval, addIdea, deleteIdea } from './lib/queries'
+import type { Trip, Profile, Approval, Idea, ApprovalKind } from './types'
 import { yearGroupOf } from './types'
 
 const SIDEBAR_WIDTH = 340
@@ -39,16 +46,53 @@ function NotAllowlisted() {
 /** Gates the map behind Supabase auth once VITE_SUPABASE_URL/ANON_KEY are set. */
 function ConnectedApp() {
   const { loading: authLoading, session, profile } = useAuth()
-  const { trips, members, approvals, loading: dataLoading } = useTripsData()
+  const { trips, members, approvals, ideas, loading: dataLoading } = useTripsData()
 
   if (authLoading) return <LoadingScreen label="Signing in…" />
   if (!session) return <Login />
   if (!profile) return <NotAllowlisted />
   if (dataLoading) return <LoadingScreen label="Charting the atlas…" />
-  return <AtlasMap trips={trips} members={members} approvals={approvals} />
+
+  return (
+    <AtlasMap
+      trips={trips}
+      members={members}
+      approvals={approvals}
+      ideas={ideas}
+      currentUserId={profile.id}
+      onToggleApproval={(tripId, kind) => {
+        const mine = approvals.some((a) => a.tripId === tripId && a.userId === profile.id && a.kind === kind)
+        if (mine) removeApproval(tripId, profile.id, kind)
+        else addApproval(tripId, profile.id, kind)
+      }}
+      onAddIdea={(data) => addIdea({ ...data, createdBy: profile.id })}
+      onDeleteIdea={(ideaId) => deleteIdea(ideaId)}
+    />
+  )
 }
 
-function AtlasMap({ trips, members, approvals }: { trips: Trip[]; members: Profile[]; approvals: Approval[] }) {
+interface AtlasMapProps {
+  trips: Trip[]
+  members: Profile[]
+  approvals: Approval[]
+  ideas: Idea[]
+  /** Signed-in user's id; null in local demo mode (no interactivity). */
+  currentUserId: string | null
+  onToggleApproval?: (tripId: string, kind: ApprovalKind) => void
+  onAddIdea?: (data: { title: string; lat: number; lng: number; note: string | null; yearSuggestion: number | null }) => void
+  onDeleteIdea?: (ideaId: string) => void
+}
+
+function AtlasMap({
+  trips,
+  members,
+  approvals,
+  ideas,
+  currentUserId,
+  onToggleApproval,
+  onAddIdea,
+  onDeleteIdea,
+}: AtlasMapProps) {
   const years = useMemo(() => {
     const bySortKey = new Map<string, number>()
     for (const t of trips) {
@@ -58,11 +102,15 @@ function AtlasMap({ trips, members, approvals }: { trips: Trip[]; members: Profi
     return [...bySortKey.entries()].sort(([a, ay], [b, by]) => ay - by || a.localeCompare(b)).map(([label]) => label)
   }, [trips])
 
+  const ideaAuthors = useMemo(() => new Map(members.map((m) => [m.id, m.color])), [members])
+
   // Default: every year visible → overlay mode.
   const [activeYears, setActiveYears] = useState<Set<string>>(() => new Set(years))
   const [hoveredTripId, setHoveredTripId] = useState<string | null>(null)
   const [focus, setFocus] = useState<{ tripId: string; nonce: number } | null>(null)
   const [sidebarOpen, toggleSidebar] = useSidebarOpen()
+  const [addIdeaMode, setAddIdeaMode] = useState(false)
+  const [pendingIdeaLocation, setPendingIdeaLocation] = useState<{ lat: number; lng: number } | null>(null)
 
   const toggleYear = (year: string) =>
     setActiveYears((prev) => {
@@ -87,6 +135,11 @@ function AtlasMap({ trips, members, approvals }: { trips: Trip[]; members: Profi
         onHoverTrip={setHoveredTripId}
         focus={focus}
         sidebarPadding={sidebarOpen ? SIDEBAR_WIDTH : 0}
+        ideas={ideas}
+        ideaAuthors={ideaAuthors}
+        addIdeaMode={addIdeaMode}
+        onMapClickForIdea={(lat, lng) => setPendingIdeaLocation({ lat, lng })}
+        pendingIdeaLocation={pendingIdeaLocation}
       />
       <header className="brand glass">
         <span className="brand-mark">🧭</span>
@@ -98,16 +151,42 @@ function AtlasMap({ trips, members, approvals }: { trips: Trip[]; members: Profi
       <div className="chips-wrap">
         <YearChips years={years} activeYears={activeYears} onToggle={toggleYear} />
       </div>
+      {currentUserId !== null && onAddIdea && (
+        <button
+          type="button"
+          className={`add-idea-toggle${addIdeaMode ? ' active' : ''}`}
+          onClick={() => {
+            setAddIdeaMode((on) => !on)
+            setPendingIdeaLocation(null)
+          }}
+        >
+          {addIdeaMode ? '✕ Cancel' : '📍 Add idea'}
+        </button>
+      )}
+      {pendingIdeaLocation && onAddIdea && (
+        <AddIdeaForm
+          onCancel={() => setPendingIdeaLocation(null)}
+          onSave={({ title, note, yearSuggestion }) => {
+            onAddIdea({ title, note: note || null, yearSuggestion, lat: pendingIdeaLocation.lat, lng: pendingIdeaLocation.lng })
+            setPendingIdeaLocation(null)
+            setAddIdeaMode(false)
+          }}
+        />
+      )}
       <Sidebar
         trips={trips}
         members={members}
         approvals={approvals}
+        ideas={ideas}
         activeYears={activeYears}
         hoveredTripId={hoveredTripId}
         onHoverTrip={setHoveredTripId}
         onFocusTrip={focusTrip}
         open={sidebarOpen}
         onToggleOpen={toggleSidebar}
+        currentUserId={currentUserId}
+        onToggleApproval={onToggleApproval}
+        onDeleteIdea={onDeleteIdea}
       />
     </div>
   )
@@ -115,7 +194,15 @@ function AtlasMap({ trips, members, approvals }: { trips: Trip[]; members: Profi
 
 export default function App() {
   if (!isSupabaseConfigured) {
-    return <AtlasMap trips={placeholderTrips} members={placeholderMembers} approvals={placeholderApprovals} />
+    return (
+      <AtlasMap
+        trips={placeholderTrips}
+        members={placeholderMembers}
+        approvals={placeholderApprovals}
+        ideas={placeholderIdeas}
+        currentUserId={null}
+      />
+    )
   }
   return <ConnectedApp />
 }

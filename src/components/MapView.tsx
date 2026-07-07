@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { FeatureCollection, Point } from 'geojson'
-import type { Trip } from '../types'
+import type { Trip, Idea } from '../types'
 import { yearGroupOf } from '../types'
 import { tripRouteSegments, concatSegments, routeMidpoint, sliceCoordinates, coordsLengthKm, type LngLat } from '../lib/geo'
 
@@ -18,6 +18,12 @@ interface MapViewProps {
   focus: { tripId: string; nonce: number } | null
   /** Extra right padding for fit-to-bounds while the sidebar is open. */
   sidebarPadding: number
+  ideas: Idea[]
+  ideaAuthors: Map<string, string>
+  /** While true, clicking the map drops a ghost pin instead of panning/selecting. */
+  addIdeaMode: boolean
+  onMapClickForIdea: (lat: number, lng: number) => void
+  pendingIdeaLocation: { lat: number; lng: number } | null
 }
 
 const esc = (s: string) =>
@@ -28,6 +34,15 @@ function fmtDate(iso: string) {
     day: 'numeric',
     month: 'short',
   })
+}
+
+function ideaPopupHtml(idea: Idea, color: string): string {
+  return `
+    <div class="stop-popup" style="--trip-color:${esc(color)}">
+      <div class="stop-popup-name">${esc(idea.title)}</div>
+      ${idea.yearSuggestion ? `<div class="stop-popup-dates">${idea.yearSuggestion}?</div>` : ''}
+      ${idea.note ? `<div class="stop-popup-notes">${esc(idea.note)}</div>` : ''}
+    </div>`
 }
 
 function popupHtml(p: Record<string, string>): string {
@@ -126,10 +141,17 @@ export default function MapView({
   onHoverTrip,
   focus,
   sidebarPadding,
+  ideas,
+  ideaAuthors,
+  addIdeaMode,
+  onMapClickForIdea,
+  pendingIdeaLocation,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const badgeMarkers = useRef<Map<string, maplibregl.Marker>>(new Map())
+  const ideaMarkers = useRef<Map<string, maplibregl.Marker>>(new Map())
+  const ghostMarker = useRef<maplibregl.Marker | null>(null)
   const segmentsRef = useRef<SegmentMeta[]>([])
   const tripAnimsRef = useRef<Map<string, TripAnim>>(new Map())
   const prevVisible = useRef<Set<string>>(new Set())
@@ -138,6 +160,10 @@ export default function MapView({
   // Keep latest values available to map event handlers without re-binding.
   const hoverCb = useRef(onHoverTrip)
   hoverCb.current = onHoverTrip
+  const addIdeaCb = useRef(onMapClickForIdea)
+  addIdeaCb.current = onMapClickForIdea
+  const addIdeaModeRef = useRef(addIdeaMode)
+  addIdeaModeRef.current = addIdeaMode
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -301,6 +327,7 @@ export default function MapView({
       }
 
       map.on('click', 'stop-core', (e) => {
+        if (addIdeaModeRef.current) return
         const f = e.features?.[0]
         if (!f) return
         const [lng, lat] = (f.geometry as Point).coordinates
@@ -309,6 +336,12 @@ export default function MapView({
           .setHTML(popupHtml(f.properties as Record<string, string>))
           .addTo(map)
         map.easeTo({ center: [lng, lat], duration: 800 })
+      })
+
+      // Add-idea mode: any map click drops a pending idea at that point.
+      map.on('click', (e) => {
+        if (!addIdeaModeRef.current) return
+        addIdeaCb.current(e.lngLat.lat, e.lngLat.lng)
       })
 
       // Single rAF loop: flowing route dashes, pin pulse, and route draw-in.
@@ -439,6 +472,57 @@ export default function MapView({
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus, ready])
+
+  // Idea pins: ghost/dashed markers in the author's color, rebuilt when the list changes.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+    ideaMarkers.current.forEach((m) => m.remove())
+    ideaMarkers.current.clear()
+    for (const idea of ideas) {
+      const color = ideaAuthors.get(idea.createdBy) ?? '#8b93a7'
+      const el = document.createElement('div')
+      el.className = 'idea-marker'
+      el.style.setProperty('--trip-color', color)
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation()
+        new maplibregl.Popup({ closeButton: false, offset: 12, maxWidth: '260px' })
+          .setLngLat([idea.lng, idea.lat])
+          .setHTML(ideaPopupHtml(idea, color))
+          .addTo(map)
+      })
+      const marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([idea.lng, idea.lat]).addTo(map)
+      ideaMarkers.current.set(idea.id, marker)
+    }
+  }, [ideas, ideaAuthors, ready])
+
+  // Ghost pin while an idea is pending (map clicked, form not yet submitted).
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+    if (!pendingIdeaLocation) {
+      ghostMarker.current?.remove()
+      ghostMarker.current = null
+      return
+    }
+    const el = document.createElement('div')
+    el.className = 'ghost-pin'
+    const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+      .setLngLat([pendingIdeaLocation.lng, pendingIdeaLocation.lat])
+      .addTo(map)
+    ghostMarker.current?.remove()
+    ghostMarker.current = marker
+    return () => {
+      marker.remove()
+    }
+  }, [pendingIdeaLocation, ready])
+
+  // Add-idea mode: hint clickability with a crosshair cursor.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+    map.getCanvas().style.cursor = addIdeaMode ? 'crosshair' : ''
+  }, [addIdeaMode, ready])
 
   return (
     <>

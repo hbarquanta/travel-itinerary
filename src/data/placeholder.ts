@@ -4,7 +4,7 @@
 // Trip content below is the group's actual real route planning (as of
 // 2026-07-06), not fictional demo data.
 
-import type { Trip, Profile, Approval } from '../types'
+import type { Trip, Profile, Approval, Idea } from '../types'
 
 export const members: Profile[] = [
   { id: 'u-fabian', email: 'fabian.joebstl@gmail.com', displayName: 'Fabian', color: '#f97316', emoji: '🦊', isAdmin: true },
@@ -202,4 +202,26 @@ export const approvals: Approval[] = [
   { id: 'a-cau-1', tripId: 't-caucasus', userId: 'u-fabian', kind: 'trip' },
   { id: 'a-cau-2', tripId: 't-caucasus', userId: 'u-jonas', kind: 'trip' },
   { id: 'a-cau-3', tripId: 't-caucasus', userId: 'u-elli', kind: 'trip' },
+]
+
+// Dummy idea pins for the static Phase 1/2 sidebar — UI demo only.
+export const ideas: Idea[] = [
+  {
+    id: 'i-iceland',
+    title: 'Iceland ring road',
+    lat: 64.9631,
+    lng: -19.0208,
+    yearSuggestion: 2031,
+    note: 'Waterfalls, glaciers, midnight sun — maybe a summer trip?',
+    createdBy: 'u-mara',
+  },
+  {
+    id: 'i-morocco',
+    title: 'Morocco',
+    lat: 31.7917,
+    lng: -7.0926,
+    yearSuggestion: null,
+    note: 'Marrakech, the Atlas mountains, maybe the desert too.',
+    createdBy: 'u-jonas',
+  },
 ]

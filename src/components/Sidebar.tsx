@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { Trip, Profile, Approval, TripStatus } from '../types'
+import type { Trip, Profile, Approval, ApprovalKind, Idea, TripStatus } from '../types'
 import { yearGroupOf } from '../types'
 
 const STATUS_META: Record<TripStatus, { icon: string; label: string }> = {
@@ -22,24 +22,33 @@ interface SidebarProps {
   trips: Trip[]
   members: Profile[]
   approvals: Approval[]
+  ideas: Idea[]
   activeYears: Set<string>
   hoveredTripId: string | null
   onHoverTrip: (tripId: string | null) => void
   onFocusTrip: (tripId: string) => void
   open: boolean
   onToggleOpen: () => void
+  /** Signed-in user's id — enables tapping your own avatar / deleting your own ideas. Demo mode passes null. */
+  currentUserId: string | null
+  onToggleApproval?: (tripId: string, kind: ApprovalKind) => void
+  onDeleteIdea?: (ideaId: string) => void
 }
 
 export default function Sidebar({
   trips,
   members,
   approvals,
+  ideas,
   activeYears,
   hoveredTripId,
   onHoverTrip,
   onFocusTrip,
   open,
   onToggleOpen,
+  currentUserId,
+  onToggleApproval,
+  onDeleteIdea,
 }: SidebarProps) {
   const byYear = useMemo(() => {
     const groups = new Map<string, { sortKey: number; trips: Trip[] }>()
@@ -52,6 +61,8 @@ export default function Sidebar({
       ([labelA, a], [labelB, b]) => a.sortKey - b.sortKey || labelA.localeCompare(labelB),
     )
   }, [trips])
+
+  const memberById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members])
 
   return (
     <>
@@ -83,10 +94,46 @@ export default function Sidebar({
                   hovered={hoveredTripId === trip.id}
                   onHover={onHoverTrip}
                   onFocus={onFocusTrip}
+                  currentUserId={currentUserId}
+                  onToggleApproval={onToggleApproval}
                 />
               ))}
             </section>
           ))}
+
+          {ideas.length > 0 && (
+            <section>
+              <h3 className="year-heading">Ideas</h3>
+              {ideas.map((idea) => {
+                const author = memberById.get(idea.createdBy)
+                const own = currentUserId !== null && idea.createdBy === currentUserId
+                return (
+                  <article
+                    key={idea.id}
+                    className="idea-card"
+                    style={{ '--avatar-color': author?.color ?? '#8b93a7' } as React.CSSProperties}
+                  >
+                    <div className="trip-card-top">
+                      <span className="trip-dot idea-dot" />
+                      <h4 className="trip-title">{idea.title}</h4>
+                      {idea.yearSuggestion && <span className="status-badge">{idea.yearSuggestion}?</span>}
+                    </div>
+                    {idea.note && <p className="trip-desc">{idea.note}</p>}
+                    <div className="idea-footer">
+                      <span className="idea-author">
+                        {author ? `${author.emoji} ${author.displayName}` : 'Someone'}
+                      </span>
+                      {own && onDeleteIdea && (
+                        <button type="button" className="idea-delete" onClick={() => onDeleteIdea(idea.id)}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                )
+              })}
+            </section>
+          )}
         </div>
       </aside>
     </>
@@ -100,6 +147,8 @@ function TripCard({
   hovered,
   onHover,
   onFocus,
+  currentUserId,
+  onToggleApproval,
 }: {
   trip: Trip
   members: Profile[]
@@ -107,6 +156,8 @@ function TripCard({
   hovered: boolean
   onHover: (id: string | null) => void
   onFocus: (id: string) => void
+  currentUserId: string | null
+  onToggleApproval?: (tripId: string, kind: ApprovalKind) => void
 }) {
   const status = STATUS_META[trip.status]
   const tripApproved = new Set(approvals.filter((a) => a.kind === 'trip').map((a) => a.userId))
@@ -138,16 +189,24 @@ function TripCard({
       <div className="approval-row" title="Approvals — filled: trip, corner tick: dates">
         {members.map((m) => {
           const approved = tripApproved.has(m.id)
+          const own = currentUserId !== null && m.id === currentUserId
+          const label = `${m.displayName}${approved ? ' approved the trip' : ' — not yet'}${datesApproved.has(m.id) ? ', dates ✓' : ''}${own ? ' (tap to toggle)' : ''}`
           return (
-            <span
+            <button
               key={m.id}
-              className={`avatar${approved ? ' approved' : ''}`}
+              type="button"
+              className={`avatar${approved ? ' approved' : ''}${own ? ' own' : ''}`}
               style={{ '--avatar-color': m.color } as React.CSSProperties}
-              title={`${m.displayName}${approved ? ' approved the trip' : ' — not yet'}${datesApproved.has(m.id) ? ', dates ✓' : ''}`}
+              title={label}
+              disabled={!own}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (own && onToggleApproval) onToggleApproval(trip.id, 'trip')
+              }}
             >
               {m.emoji}
               {datesApproved.has(m.id) && <i className="dates-tick">✓</i>}
-            </span>
+            </button>
           )
         })}
       </div>

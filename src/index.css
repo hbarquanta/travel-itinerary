@@ -552,14 +552,19 @@ section.year-off {
   position: relative;
   width: 28px;
   height: 28px;
+  padding: 0;
   border-radius: 50%;
   display: grid;
   place-items: center;
+  font: inherit;
   font-size: 14px;
   border: 1.5px dashed color-mix(in srgb, var(--avatar-color) 55%, transparent);
   background: transparent;
   filter: grayscale(0.9);
   opacity: 0.55;
+  cursor: default;
+  -webkit-appearance: none;
+  appearance: none;
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -570,6 +575,18 @@ section.year-off {
   box-shadow: 0 0 10px color-mix(in srgb, var(--avatar-color) 45%, transparent);
   filter: none;
   opacity: 1;
+}
+
+.avatar.own {
+  cursor: pointer;
+}
+
+.avatar.own:hover {
+  transform: scale(1.12);
+}
+
+.avatar.own:active {
+  transform: scale(0.92);
 }
 
 .dates-tick {
@@ -584,6 +601,168 @@ section.year-off {
   font: 700 9px/13px var(--font);
   font-style: normal;
   text-align: center;
+}
+
+/* ── Idea cards (sidebar) ── */
+.idea-card {
+  position: relative;
+  border-radius: 12px;
+  border: 1px dashed color-mix(in srgb, var(--avatar-color) 45%, var(--panel-border));
+  background: rgba(255, 255, 255, 0.02);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+
+.idea-dot {
+  background: var(--avatar-color);
+  box-shadow: 0 0 8px var(--avatar-color);
+}
+
+.idea-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.idea-author {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.idea-delete {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.idea-delete:hover {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* ── Add-idea mode ── */
+.add-idea-toggle {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  color: var(--text);
+  font: 700 13px var(--font);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s, color 0.2s;
+}
+
+.add-idea-toggle:hover {
+  transform: translateY(-1px);
+}
+
+.add-idea-toggle.active {
+  background: var(--accent-gradient);
+  color: #fff;
+  border-color: transparent;
+}
+
+.ghost-pin {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px dashed #fff;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.6);
+  animation: ghost-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ghost-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.25); opacity: 1; }
+}
+
+.idea-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px dashed var(--trip-color);
+  background: color-mix(in srgb, var(--trip-color) 25%, transparent);
+  cursor: pointer;
+}
+
+.add-idea-form {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  width: min(320px, 90vw);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.add-idea-form h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.add-idea-form input,
+.add-idea-form textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: 13px var(--font);
+  resize: none;
+  box-sizing: border-box;
+}
+
+.add-idea-form input:focus,
+.add-idea-form textarea:focus {
+  outline: none;
+  border-color: var(--accent-b);
+}
+
+.add-idea-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.add-idea-actions button {
+  flex: 1;
+  padding: 9px;
+  border-radius: 9px;
+  border: none;
+  font: 700 12.5px var(--font);
+  cursor: pointer;
+}
+
+.add-idea-save {
+  background: var(--accent-gradient);
+  color: #fff;
+}
+
+.add-idea-cancel {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
 }
 
 /* ── Year badges on the map ── */

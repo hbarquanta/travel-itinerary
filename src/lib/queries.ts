@@ -149,3 +149,49 @@ export async function fetchIdeas(): Promise<Idea[]> {
     createdBy: row.created_by,
   }))
 }
+
+/** Approve a trip — a no-op (via unique constraint) if already approved. */
+export async function addApproval(tripId: string, userId: string, kind: ApprovalKind) {
+  const db = client()
+  const { error } = await db.from('approvals').upsert(
+    { trip_id: tripId, user_id: userId, kind },
+    { onConflict: 'trip_id,user_id,kind', ignoreDuplicates: true },
+  )
+  if (error) throw error
+}
+
+/** Withdraw a previously-given approval. */
+export async function removeApproval(tripId: string, userId: string, kind: ApprovalKind) {
+  const db = client()
+  const { error } = await db.from('approvals').delete().match({ trip_id: tripId, user_id: userId, kind })
+  if (error) throw error
+}
+
+export interface NewIdea {
+  title: string
+  lat: number
+  lng: number
+  yearSuggestion: number | null
+  note: string | null
+  createdBy: string
+}
+
+export async function addIdea(idea: NewIdea) {
+  const db = client()
+  const { error } = await db.from('ideas').insert({
+    title: idea.title,
+    lat: idea.lat,
+    lng: idea.lng,
+    year_suggestion: idea.yearSuggestion,
+    note: idea.note,
+    created_by: idea.createdBy,
+  })
+  if (error) throw error
+}
+
+/** Delete an idea — RLS only allows deleting your own. */
+export async function deleteIdea(id: string) {
+  const db = client()
+  const { error } = await db.from('ideas').delete().eq('id', id)
+  if (error) throw error
+}
