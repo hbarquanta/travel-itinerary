@@ -395,6 +395,26 @@ body,
 .sidebar-header {
   padding: 18px 20px 12px;
   border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sidebar-new-trip {
+  flex: none;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent-gradient);
+  color: #fff;
+  font: 700 11.5px var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sidebar-new-trip:hover {
+  transform: translateY(-1px);
 }
 
 .sidebar-header h2 {
@@ -646,6 +666,44 @@ section.year-off {
   background: rgba(248, 113, 113, 0.1);
 }
 
+.idea-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.idea-promote {
+  border: none;
+  background: none;
+  color: var(--accent-b);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.idea-promote:hover {
+  background: color-mix(in srgb, var(--accent-b) 15%, transparent);
+}
+
+/* ── Admin: edit button on trip cards ── */
+.trip-card-edit {
+  flex: none;
+  border: none;
+  background: none;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  opacity: 0.7;
+}
+
+.trip-card-edit:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* ── Add-idea mode ── */
 .add-idea-toggle {
   position: absolute;
@@ -763,6 +821,309 @@ section.year-off {
 .add-idea-cancel {
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-dim);
+}
+
+/* ── Admin trip panel ── */
+.admin-panel {
+  position: absolute;
+  top: 90px;
+  left: 20px;
+  bottom: 20px;
+  z-index: 18;
+  width: min(360px, 88vw);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.admin-panel-header h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.admin-panel-close {
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.admin-panel-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.admin-panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.admin-field > span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.admin-field input,
+.admin-field select,
+.admin-field textarea {
+  width: 100%;
+  padding: 8px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: 13px var(--font);
+  box-sizing: border-box;
+  resize: none;
+}
+
+.admin-field input:focus,
+.admin-field select:focus,
+.admin-field textarea:focus {
+  outline: none;
+  border-color: var(--accent-b);
+}
+
+.admin-field-row {
+  display: flex;
+  gap: 10px;
+}
+
+.admin-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.color-swatch.selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4);
+}
+
+.admin-stops-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.admin-stops-header h3 {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+
+.admin-empty-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.admin-stop-row {
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-stop-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-stop-index {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.admin-stop-name {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: 12.5px var(--font);
+}
+
+.admin-stop-name:focus {
+  outline: none;
+  border-color: var(--accent-b);
+}
+
+.admin-stop-top button {
+  flex: none;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-dim);
+  font-size: 11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.admin-stop-top button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--text);
+}
+
+.admin-stop-top button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.admin-mode-toggle {
+  font-size: 12px !important;
+}
+
+.admin-stop-remove:hover {
+  background: rgba(248, 113, 113, 0.15) !important;
+  color: #f87171 !important;
+}
+
+.admin-stop-detail {
+  width: 100%;
+  padding: 5px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--panel-border);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-dim);
+  font: 11.5px var(--font);
+  box-sizing: border-box;
+}
+
+.admin-stop-detail:focus {
+  outline: none;
+  border-color: var(--accent-b);
+  color: var(--text);
+}
+
+.admin-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--panel-border);
+}
+
+.admin-panel-actions .add-idea-cancel,
+.admin-panel-actions .add-idea-save {
+  padding: 9px 14px;
+  border-radius: 9px;
+  border: none;
+  font: 700 12.5px var(--font);
+  cursor: pointer;
+}
+
+.admin-panel-actions .add-idea-save {
+  flex: 1;
+}
+
+.admin-delete {
+  border: none;
+  background: none;
+  color: #f87171;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 8px;
+  margin-right: auto;
+}
+
+.admin-delete:hover {
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.admin-confirm-text {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  margin-right: auto;
+}
+
+.admin-delete-confirm {
+  border: none;
+  border-radius: 8px;
+  padding: 7px 10px;
+  background: #f87171;
+  color: #1a0b0b;
+  font: 700 11.5px var(--font);
+  cursor: pointer;
+}
+
+/* ── Draggable stop markers (admin edit mode) ── */
+.edit-stop-marker {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--accent-b);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.7);
+  cursor: grab;
+}
+
+.edit-stop-marker:active {
+  cursor: grabbing;
 }
 
 /* ── Year badges on the map ── */

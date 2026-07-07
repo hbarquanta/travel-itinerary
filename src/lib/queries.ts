@@ -195,3 +195,115 @@ export async function deleteIdea(id: string) {
   const { error } = await db.from('ideas').delete().eq('id', id)
   if (error) throw error
 }
+
+// ── Admin: trip & stop CRUD (RLS restricts writes to is_admin) ────────────
+
+export interface TripInput {
+  title: string
+  year: number
+  status: TripStatus
+  dateStart: string | null
+  dateEnd: string | null
+  datesConfirmed: boolean
+  color: string
+  description: string | null
+}
+
+export async function createTrip(input: TripInput, createdBy: string): Promise<string> {
+  const db = client()
+  const { data, error } = await db
+    .from('trips')
+    .insert({
+      title: input.title,
+      year: input.year,
+      status: input.status,
+      date_start: input.dateStart,
+      date_end: input.dateEnd,
+      dates_confirmed: input.datesConfirmed,
+      color: input.color,
+      description: input.description,
+      created_by: createdBy,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data.id as string
+}
+
+export async function updateTrip(id: string, input: TripInput) {
+  const db = client()
+  const { error } = await db
+    .from('trips')
+    .update({
+      title: input.title,
+      year: input.year,
+      status: input.status,
+      date_start: input.dateStart,
+      date_end: input.dateEnd,
+      dates_confirmed: input.datesConfirmed,
+      color: input.color,
+      description: input.description,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteTrip(id: string) {
+  const db = client()
+  const { error } = await db.from('trips').delete().eq('id', id)
+  if (error) throw error
+}
+
+export interface StopInput {
+  tripId: string
+  name: string
+  lat: number
+  lng: number
+  orderIndex: number
+  notes: string | null
+  wikiUrl: string | null
+  travelMode: 'ground' | 'flight'
+}
+
+export async function createStop(input: StopInput): Promise<string> {
+  const db = client()
+  const { data, error } = await db
+    .from('stops')
+    .insert({
+      trip_id: input.tripId,
+      name: input.name,
+      lat: input.lat,
+      lng: input.lng,
+      order_index: input.orderIndex,
+      notes: input.notes,
+      wiki_url: input.wikiUrl,
+      travel_mode: input.travelMode,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data.id as string
+}
+
+export async function updateStop(id: string, input: Omit<StopInput, 'tripId'>) {
+  const db = client()
+  const { error } = await db
+    .from('stops')
+    .update({
+      name: input.name,
+      lat: input.lat,
+      lng: input.lng,
+      order_index: input.orderIndex,
+      notes: input.notes,
+      wiki_url: input.wikiUrl,
+      travel_mode: input.travelMode,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteStop(id: string) {
+  const db = client()
+  const { error } = await db.from('stops').delete().eq('id', id)
+  if (error) throw error
+}

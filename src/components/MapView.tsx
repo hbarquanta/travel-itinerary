@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import type { FeatureCollection, Point } from 'geojson'
 import type { Trip, Idea } from '../types'
 import { yearGroupOf } from '../types'
 import { tripRouteSegments, concatSegments, routeMidpoint, sliceCoordinates, coordsLengthKm, type LngLat } from '../lib/geo'
+import type { EditStop } from '../lib/editSession'
 
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark'
 const DRAW_IN_MS = 2000
@@ -24,6 +25,10 @@ interface MapViewProps {
   addIdeaMode: boolean
   onMapClickForIdea: (lat: number, lng: number) => void
   pendingIdeaLocation: { lat: number; lng: number } | null
+  /** Admin trip-editing stops (draggable) — null when no trip is being edited. */
+  editStops: EditStop[] | null
+  onAddEditStop: (lat: number, lng: number) => void
+  onDragEditStop: (localId: string, lat: number, lng: number) => void
 }
 
 const esc = (s: string) =>
@@ -146,12 +151,16 @@ export default function MapView({
   addIdeaMode,
   onMapClickForIdea,
   pendingIdeaLocation,
+  editStops,
+  onAddEditStop,
+  onDragEditStop,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const badgeMarkers = useRef<Map<string, maplibregl.Marker>>(new Map())
   const ideaMarkers = useRef<Map<string, maplibregl.Marker>>(new Map())
   const ghostMarker = useRef<maplibregl.Marker | null>(null)
+  const editStopMarkers = useRef<Map<string, maplibregl.Marker>>(new Map())
   const segmentsRef = useRef<SegmentMeta[]>([])
   const tripAnimsRef = useRef<Map<string, TripAnim>>(new Map())
   const prevVisible = useRef<Set<string>>(new Set())
@@ -164,6 +173,12 @@ export default function MapView({
   addIdeaCb.current = onMapClickForIdea
   const addIdeaModeRef = useRef(addIdeaMode)
   addIdeaModeRef.current = addIdeaMode
+  const editStopsCb = useRef(onAddEditStop)
+  editStopsCb.current = onAddEditStop
+  const dragEditCb = useRef(onDragEditStop)
+  dragEditCb.current = onDragEditStop
+  const isEditingRef = useRef(false)
+  isEditingRef.current = editStops !== null
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -327,7 +342,7 @@ export default function MapView({
       }
 
       map.on('click', 'stop-core', (e) => {
-        if (addIdeaModeRef.current) return
+        if (addIdeaModeRef.current || isEditingRef.current) return
         const f = e.features?.[0]
         if (!f) return
         const [lng, lat] = (f.geometry as Point).coordinates
@@ -339,9 +354,10 @@ export default function MapView({
       })
 
       // Add-idea mode: any map click drops a pending idea at that point.
+      // Admin edit mode: any map click appends a new stop to the trip being edited.
       map.on('click', (e) => {
-        if (!addIdeaModeRef.current) return
-        addIdeaCb.current(e.lngLat.lat, e.lngLat.lng)
+        if (addIdeaModeRef.current) addIdeaCb.current(e.lngLat.lat, e.lngLat.lng)
+        else if (isEditingRef.current) editStopsCb.current(e.lngLat.lat, e.lngLat.lng)
       })
 
       // Single rAF loop: flowing route dashes, pin pulse, and route draw-in.
@@ -517,12 +533,44 @@ export default function MapView({
     }
   }, [pendingIdeaLocation, ready])
 
-  // Add-idea mode: hint clickability with a crosshair cursor.
+  // Draggable stop markers for the trip currently being admin-edited. Keyed
+  // off positions only (not every text-field keystroke) so typing in the
+  // panel doesn't rebuild markers mid-drag.
+  const editStopsPositionKey = useMemo(
+    () => editStops?.map((s) => `${s.localId}:${s.lat.toFixed(6)}:${s.lng.toFixed(6)}`).join('|') ?? '',
+    [editStops],
+  )
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
-    map.getCanvas().style.cursor = addIdeaMode ? 'crosshair' : ''
-  }, [addIdeaMode, ready])
+    editStopMarkers.current.forEach((m) => m.remove())
+    editStopMarkers.current.clear()
+    if (!editStops) return
+    for (const stop of editStops) {
+      const el = document.createElement('div')
+      el.className = 'edit-stop-marker'
+      const marker = new maplibregl.Marker({ element: el, anchor: 'center', draggable: true })
+        .setLngLat([stop.lng, stop.lat])
+        .addTo(map)
+      marker.on('dragend', () => {
+        const { lat, lng } = marker.getLngLat()
+        dragEditCb.current(stop.localId, lat, lng)
+      })
+      editStopMarkers.current.set(stop.localId, marker)
+    }
+    return () => {
+      editStopMarkers.current.forEach((m) => m.remove())
+      editStopMarkers.current.clear()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editStopsPositionKey, ready])
+
+  // Add-idea / admin-edit mode: hint clickability with a crosshair cursor.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+    map.getCanvas().style.cursor = addIdeaMode || editStops !== null ? 'crosshair' : ''
+  }, [addIdeaMode, editStops, ready])
 
   return (
     <>

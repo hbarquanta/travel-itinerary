@@ -31,8 +31,12 @@ interface SidebarProps {
   onToggleOpen: () => void
   /** Signed-in user's id — enables tapping your own avatar / deleting your own ideas. Demo mode passes null. */
   currentUserId: string | null
+  isAdmin: boolean
   onToggleApproval?: (tripId: string, kind: ApprovalKind) => void
   onDeleteIdea?: (ideaId: string) => void
+  onNewTrip?: () => void
+  onEditTrip?: (trip: Trip) => void
+  onPromoteIdea?: (idea: Idea) => void
 }
 
 export default function Sidebar({
@@ -47,8 +51,12 @@ export default function Sidebar({
   open,
   onToggleOpen,
   currentUserId,
+  isAdmin,
   onToggleApproval,
   onDeleteIdea,
+  onNewTrip,
+  onEditTrip,
+  onPromoteIdea,
 }: SidebarProps) {
   const byYear = useMemo(() => {
     const groups = new Map<string, { sortKey: number; trips: Trip[] }>()
@@ -76,10 +84,17 @@ export default function Sidebar({
       </button>
       <aside className={`sidebar glass${open ? '' : ' collapsed'}`}>
         <header className="sidebar-header">
-          <h2>Journeys</h2>
-          <span className="sidebar-sub">
-            {trips.length} trips · {members.length} travellers
-          </span>
+          <div>
+            <h2>Journeys</h2>
+            <span className="sidebar-sub">
+              {trips.length} trips · {members.length} travellers
+            </span>
+          </div>
+          {isAdmin && onNewTrip && (
+            <button type="button" className="sidebar-new-trip" onClick={onNewTrip}>
+              + New trip
+            </button>
+          )}
         </header>
         <div className="sidebar-scroll">
           {byYear.map(([year, group]) => (
@@ -96,6 +111,8 @@ export default function Sidebar({
                   onFocus={onFocusTrip}
                   currentUserId={currentUserId}
                   onToggleApproval={onToggleApproval}
+                  isAdmin={isAdmin}
+                  onEdit={onEditTrip}
                 />
               ))}
             </section>
@@ -123,11 +140,18 @@ export default function Sidebar({
                       <span className="idea-author">
                         {author ? `${author.emoji} ${author.displayName}` : 'Someone'}
                       </span>
-                      {own && onDeleteIdea && (
-                        <button type="button" className="idea-delete" onClick={() => onDeleteIdea(idea.id)}>
-                          Remove
-                        </button>
-                      )}
+                      <span className="idea-actions">
+                        {isAdmin && onPromoteIdea && (
+                          <button type="button" className="idea-promote" onClick={() => onPromoteIdea(idea)}>
+                            Promote to trip
+                          </button>
+                        )}
+                        {own && onDeleteIdea && (
+                          <button type="button" className="idea-delete" onClick={() => onDeleteIdea(idea.id)}>
+                            Remove
+                          </button>
+                        )}
+                      </span>
                     </div>
                   </article>
                 )
@@ -149,6 +173,8 @@ function TripCard({
   onFocus,
   currentUserId,
   onToggleApproval,
+  isAdmin,
+  onEdit,
 }: {
   trip: Trip
   members: Profile[]
@@ -158,6 +184,8 @@ function TripCard({
   onFocus: (id: string) => void
   currentUserId: string | null
   onToggleApproval?: (tripId: string, kind: ApprovalKind) => void
+  isAdmin: boolean
+  onEdit?: (trip: Trip) => void
 }) {
   const status = STATUS_META[trip.status]
   const tripApproved = new Set(approvals.filter((a) => a.kind === 'trip').map((a) => a.userId))
@@ -178,6 +206,19 @@ function TripCard({
         <span className="status-badge" title={status.label}>
           {status.icon} {status.label}
         </span>
+        {isAdmin && onEdit && (
+          <button
+            type="button"
+            className="trip-card-edit"
+            title="Edit trip"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit(trip)
+            }}
+          >
+            ✏️
+          </button>
+        )}
       </div>
       <div className="trip-meta">
         <span>{formatRange(trip)}</span>
