@@ -74,32 +74,41 @@ interface SegmentMeta {
 
 /** One draw-in animation per trip: a single ratio sweeping the whole
  *  journey start-to-end, with each leg's share proportional to its real
- *  distance so the "pen" moves at roughly constant speed. */
+ *  distance so the "pen" moves at roughly constant speed. Stops reveal
+ *  as the pen passes their position, rather than all at once. */
 interface TripAnim {
   ratio: number
   totalLength: number
   segments: { id: string; length: number; cumulative: number }[]
+  /** stop.id -> cumulative distance from the trip's first stop. */
+  stopPositions: Map<string, number>
 }
 
-function buildStopsData(trips: Trip[]): FeatureCollection {
+function buildStopsData(trips: Trip[], tripAnims: Map<string, TripAnim>): FeatureCollection {
   return {
     type: 'FeatureCollection',
-    features: trips.flatMap((t) =>
-      t.stops.map((s) => ({
-        type: 'Feature' as const,
-        properties: {
-          tripId: t.id,
-          yearGroup: yearGroupOf(t),
-          color: t.color,
-          name: s.name,
-          notes: s.notes ?? '',
-          wikiUrl: s.wikiUrl ?? '',
-          arrive: s.arrive ?? '',
-          depart: s.depart ?? '',
-        },
-        geometry: { type: 'Point' as const, coordinates: [s.lng, s.lat] },
-      })),
-    ),
+    features: trips.flatMap((t) => {
+      const anim = tripAnims.get(t.id)
+      return t.stops.map((s) => {
+        const pos = anim?.stopPositions.get(s.id) ?? 0
+        const revealed = !anim || anim.totalLength <= 0 || pos <= anim.ratio * anim.totalLength ? 1 : 0
+        return {
+          type: 'Feature' as const,
+          properties: {
+            tripId: t.id,
+            yearGroup: yearGroupOf(t),
+            color: t.color,
+            name: s.name,
+            notes: s.notes ?? '',
+            wikiUrl: s.wikiUrl ?? '',
+            arrive: s.arrive ?? '',
+            depart: s.depart ?? '',
+            revealed,
+          },
+          geometry: { type: 'Point' as const, coordinates: [s.lng, s.lat] },
+        }
+      })
+    }),
   }
 }
 
@@ -131,6 +140,47 @@ function segmentsFeatureCollection(
         },
       })),
   }
+}
+
+/** Builds segments + per-trip draw-in animations from a trips list,
+ *  carrying over each trip's existing ratio (if any) so unrelated data
+ *  refreshes (e.g. someone else approving a trip) don't replay the
+ *  draw-in animation for routes that are already fully drawn. */
+function buildSegmentsAndAnims(trips: Trip[], previous: Map<string, TripAnim>) {
+  const tripFullCoords = new Map<string, LngLat[]>()
+  const allSegments: SegmentMeta[] = []
+  const anims = new Map<string, TripAnim>()
+
+  for (const trip of trips) {
+    if (trip.stops.length < 2) continue
+    const sortedStops = [...trip.stops].sort((a, b) => a.orderIndex - b.orderIndex)
+    const segs = tripRouteSegments(trip.stops)
+    tripFullCoords.set(trip.id, concatSegments(segs))
+
+    let cumulative = 0
+    const segMetaList: TripAnim['segments'] = []
+    const stopPositions = new Map<string, number>()
+    stopPositions.set(sortedStops[0].id, 0)
+    segs.forEach((seg, i) => {
+      const id = `${trip.id}-${i}`
+      const length = coordsLengthKm(seg.coords) || 0.001
+      segMetaList.push({ id, length, cumulative })
+      cumulative += length
+      stopPositions.set(sortedStops[i + 1].id, cumulative)
+      allSegments.push({
+        id,
+        tripId: trip.id,
+        yearGroup: yearGroupOf(trip),
+        color: trip.color,
+        mode: seg.mode,
+        coords: seg.coords,
+      })
+    })
+    const ratio = previous.get(trip.id)?.ratio ?? 0
+    anims.set(trip.id, { ratio, totalLength: cumulative, segments: segMetaList, stopPositions })
+  }
+
+  return { tripFullCoords, allSegments, anims }
 }
 
 // Rotating dash pattern that makes routes feel like they're flowing.
@@ -179,7 +229,12 @@ export default function MapView({
   dragEditCb.current = onDragEditStop
   const isEditingRef = useRef(false)
   isEditingRef.current = editStops !== null
+  const tripsRef = useRef(trips)
+  tripsRef.current = trips
 
+  // Create the map once: empty sources, layers, listeners, and the rAF loop.
+  // Actual trip data is populated by the effect below, which re-runs
+  // whenever `trips` changes (not just on mount).
   useEffect(() => {
     if (!containerRef.current) return
     const map = new maplibregl.Map({
@@ -191,45 +246,11 @@ export default function MapView({
     })
     mapRef.current = map
 
-    const tripFullCoords = new Map<string, LngLat[]>()
-    const allSegments: SegmentMeta[] = []
-    const anims = new Map<string, TripAnim>()
-    for (const trip of trips) {
-      if (trip.stops.length < 2) continue
-      const segs = tripRouteSegments(trip.stops)
-      tripFullCoords.set(trip.id, concatSegments(segs))
-
-      let cumulative = 0
-      const segMetaList: TripAnim['segments'] = []
-      segs.forEach((seg, i) => {
-        const id = `${trip.id}-${i}`
-        const length = coordsLengthKm(seg.coords) || 0.001
-        segMetaList.push({ id, length, cumulative })
-        cumulative += length
-        allSegments.push({
-          id,
-          tripId: trip.id,
-          yearGroup: yearGroupOf(trip),
-          color: trip.color,
-          mode: seg.mode,
-          coords: seg.coords,
-        })
-      })
-      anims.set(trip.id, { ratio: 0, totalLength: cumulative, segments: segMetaList })
-    }
-    segmentsRef.current = allSegments
-    tripAnimsRef.current = anims
-
     map.on('load', () => {
-      map.addSource('routes', {
-        type: 'geojson',
-        data: segmentsFeatureCollection(segmentsRef.current, 'ground', tripAnimsRef.current),
-      })
-      map.addSource('flights', {
-        type: 'geojson',
-        data: segmentsFeatureCollection(segmentsRef.current, 'flight', tripAnimsRef.current),
-      })
-      map.addSource('stops', { type: 'geojson', data: buildStopsData(trips) })
+      const empty: FeatureCollection = { type: 'FeatureCollection', features: [] }
+      map.addSource('routes', { type: 'geojson', data: empty })
+      map.addSource('flights', { type: 'geojson', data: empty })
+      map.addSource('stops', { type: 'geojson', data: empty })
 
       map.addLayer({
         id: 'route-glow',
@@ -296,7 +317,7 @@ export default function MapView({
         source: 'stops',
         paint: {
           'circle-color': ['get', 'color'],
-          'circle-radius': 11,
+          'circle-radius': ['case', ['==', ['get', 'revealed'], 1], 11, 0],
           'circle-blur': 1.1,
           'circle-opacity': 0.6,
         },
@@ -307,26 +328,11 @@ export default function MapView({
         source: 'stops',
         paint: {
           'circle-color': ['get', 'color'],
-          'circle-radius': 4.5,
+          'circle-radius': ['case', ['==', ['get', 'revealed'], 1], 4.5, 0],
           'circle-stroke-color': '#ffffff',
           'circle-stroke-width': 1.5,
         },
       })
-
-      // Year badges as HTML markers at each route's midpoint.
-      for (const trip of trips) {
-        if (trip.stops.length < 2) continue
-        const el = document.createElement('div')
-        el.className = 'year-badge'
-        el.textContent = yearGroupOf(trip)
-        el.style.setProperty('--trip-color', trip.color)
-        el.addEventListener('mouseenter', () => hoverCb.current(trip.id))
-        el.addEventListener('mouseleave', () => hoverCb.current(null))
-        const marker = new maplibregl.Marker({ element: el, anchor: 'center', offset: [0, -18] })
-          .setLngLat(topmostPoint(tripFullCoords.get(trip.id) ?? []))
-          .addTo(map)
-        badgeMarkers.current.set(trip.id, marker)
-      }
 
       // Hover: highlight the whole trip, dim the rest.
       for (const layer of ['route-line', 'flight-line', 'stop-core'] as const) {
@@ -380,7 +386,13 @@ export default function MapView({
 
         pulsePhase += dt
         if (map.getLayer('stop-glow')) {
-          map.setPaintProperty('stop-glow', 'circle-radius', 11 + Math.sin(pulsePhase / 480) * 2.2)
+          const pulseRadius = 11 + Math.sin(pulsePhase / 480) * 2.2
+          map.setPaintProperty('stop-glow', 'circle-radius', [
+            'case',
+            ['==', ['get', 'revealed'], 1],
+            pulseRadius,
+            0,
+          ])
         }
 
         let drawChanged = false
@@ -393,8 +405,10 @@ export default function MapView({
         if (drawChanged) {
           const routesSrc = map.getSource('routes') as maplibregl.GeoJSONSource | undefined
           const flightsSrc = map.getSource('flights') as maplibregl.GeoJSONSource | undefined
+          const stopsSrc = map.getSource('stops') as maplibregl.GeoJSONSource | undefined
           routesSrc?.setData(segmentsFeatureCollection(segmentsRef.current, 'ground', tripAnimsRef.current))
           flightsSrc?.setData(segmentsFeatureCollection(segmentsRef.current, 'flight', tripAnimsRef.current))
+          stopsSrc?.setData(buildStopsData(tripsRef.current, tripAnimsRef.current))
         }
 
         requestAnimationFrame(animate)
@@ -411,9 +425,43 @@ export default function MapView({
       setReady(false)
       map.remove()
     }
-    // Trips are static placeholder data in Phase 1; the map is built once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Rebuild segments/anims/sources/badges whenever the trips list changes —
+  // not just on mount — so a newly created or edited trip actually shows up
+  // without a page reload. Existing trips keep their current draw-in ratio.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready) return
+
+    const { tripFullCoords, allSegments, anims } = buildSegmentsAndAnims(trips, tripAnimsRef.current)
+    segmentsRef.current = allSegments
+    tripAnimsRef.current = anims
+
+    const routesSrc = map.getSource('routes') as maplibregl.GeoJSONSource | undefined
+    const flightsSrc = map.getSource('flights') as maplibregl.GeoJSONSource | undefined
+    const stopsSrc = map.getSource('stops') as maplibregl.GeoJSONSource | undefined
+    routesSrc?.setData(segmentsFeatureCollection(allSegments, 'ground', anims))
+    flightsSrc?.setData(segmentsFeatureCollection(allSegments, 'flight', anims))
+    stopsSrc?.setData(buildStopsData(trips, anims))
+
+    badgeMarkers.current.forEach((m) => m.remove())
+    badgeMarkers.current.clear()
+    for (const trip of trips) {
+      if (trip.stops.length < 2) continue
+      const el = document.createElement('div')
+      el.className = 'year-badge'
+      el.textContent = yearGroupOf(trip)
+      el.style.setProperty('--trip-color', trip.color)
+      el.addEventListener('mouseenter', () => hoverCb.current(trip.id))
+      el.addEventListener('mouseleave', () => hoverCb.current(null))
+      const marker = new maplibregl.Marker({ element: el, anchor: 'center', offset: [0, -18] })
+        .setLngLat(topmostPoint(tripFullCoords.get(trip.id) ?? []))
+        .addTo(map)
+      badgeMarkers.current.set(trip.id, marker)
+    }
+  }, [trips, ready])
 
   // Year filter + draw-in trigger for newly-visible trips + fit bounds.
   useEffect(() => {
