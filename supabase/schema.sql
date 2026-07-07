@@ -80,6 +80,22 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
 
+-- Backfill: the trigger above only fires on a brand-new auth.users insert.
+-- If someone's auth account already existed (e.g. an earlier login attempt
+-- before their email was added to allowed_users, or before this schema was
+-- applied) they'd have no profile despite being allowlisted now. Re-running
+-- this block (safe, idempotent) catches those cases and keeps existing
+-- profiles' display info in sync with allowed_users too.
+insert into profiles (id, email, display_name, color, emoji, is_admin)
+select u.id, u.email, a.display_name, a.color, a.emoji, a.is_admin
+from auth.users u
+join allowed_users a on a.email = u.email
+on conflict (id) do update set
+  display_name = excluded.display_name,
+  color = excluded.color,
+  emoji = excluded.emoji,
+  is_admin = excluded.is_admin;
+
 -- ── Trips & stops ──────────────────────────────────────────────────────
 create table if not exists trips (
   id uuid primary key default gen_random_uuid(),
