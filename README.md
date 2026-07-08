@@ -34,9 +34,10 @@ is wired up (below), it switches to real data + magic-link auth automatically.
    ```
 4. In *Authentication → URL Configuration*, set the Site URL (and a redirect
    URL) to wherever the app is served — `http://localhost:5173/travel-itinerary/`
-   for local dev, and the GitHub Pages URL once deployed.
+   for local dev, and the GitHub Pages URL once deployed (see below).
 5. Add the same two `VITE_SUPABASE_*` values as GitHub Actions repo secrets
-   so the deployed build can reach Supabase.
+   (*Settings → Secrets and variables → Actions → New repository secret*) —
+   the deployed build needs them at build time, same as `.env.local` locally.
 6. If a friend's real email isn't `@example.com` yet, edit the `insert into
    allowed_users (...)` block in `supabase/schema.sql` and re-run the file.
 7. Sign in once via the magic link (so your `profiles` row exists), then run
@@ -48,10 +49,24 @@ is wired up (below), it switches to real data + magic-link auth automatically.
 Restart `npm run dev` after creating `.env.local` — the app then requires a
 magic-link sign-in and reads/writes real data with realtime updates.
 
+## Deploying (Fabian — one-time setup)
+
+1. *Settings → Pages* → under **Build and deployment**, set Source to
+   **GitHub Actions** (not "Deploy from a branch").
+2. Make sure the two `VITE_SUPABASE_*` repo secrets from step 5 above are
+   set — the [deploy workflow](.github/workflows/deploy.yml) needs them.
+3. Push to `main` (or run the workflow manually from the Actions tab). It
+   builds the app and publishes `dist/` to GitHub Pages automatically from
+   then on, on every push.
+4. Once it's deployed, go back to Supabase *Authentication → URL
+   Configuration* and add the GitHub Pages URL as a Site URL / redirect URL
+   (step 4 above) — magic links won't redirect correctly without this.
+
 ## Stack
 
 - **Map:** [MapLibre GL JS](https://maplibre.org/) with
   [OpenFreeMap](https://openfreemap.org/) dark vector tiles (no API key).
 - **App:** Vite + React + TypeScript, hand-rolled CSS (no framework).
 - **Data:** Supabase free tier — Postgres + RLS + magic-link auth + realtime.
-- **Hosting (coming):** GitHub Pages via GitHub Actions.
+- **Hosting:** GitHub Pages via GitHub Actions
+  ([.github/workflows/deploy.yml](.github/workflows/deploy.yml)).
