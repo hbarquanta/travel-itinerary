@@ -17,8 +17,14 @@ do $$ begin
   create type travel_mode as enum ('ground', 'flight');
 exception when duplicate_object then null; end $$;
 
+do $$ begin
+  create type trip_category as enum ('Friends', 'Solo', 'Family');
+exception when duplicate_object then null; end $$;
+
 -- ── Allowlist seed ───────────────────────────────────────────────────
--- Edit this block to add/remove friends, then re-run the whole file.
+-- Edit this block to add/remove friends, then re-run the whole file. Emails
+-- for non-Fabian characters are fabricated (@atlas.internal) — login is by
+-- character + PIN (a Supabase Auth password on that email), not real email.
 create table if not exists allowed_users (
   email text primary key,
   display_name text not null,
@@ -28,16 +34,33 @@ create table if not exists allowed_users (
 );
 
 insert into allowed_users (email, display_name, color, emoji, is_admin) values
-  ('fabian.joebstl@gmail.com', 'Fabian', '#f97316', '🦊', true),
-  ('alex@example.com',  'Alex',  '#8b5cf6', '🐙', false),
-  ('mara@example.com',  'Mara',  '#22d3ee', '🦋', false),
-  ('jonas@example.com', 'Jonas', '#a3e635', '🦅', false),
-  ('elli@example.com',  'Elli',  '#f43f5e', '🐝', false)
+  ('fabian.joebstl@gmail.com',   'Fabian',  '#f97316', '🦊', true),
+  ('dominik@atlas.internal',     'Dominik', '#8b5cf6', '🐙', false),
+  ('florian@atlas.internal',     'Florian', '#22d3ee', '🦋', false),
+  ('mateo@atlas.internal',       'Mateo',   '#a3e635', '🦅', false),
+  ('michael@atlas.internal',     'Michael', '#f43f5e', '🐝', false),
+  ('test@atlas.internal',        'Test',    '#94a3b8', '🧪', false)
 on conflict (email) do update set
   display_name = excluded.display_name,
   color = excluded.color,
   emoji = excluded.emoji,
   is_admin = excluded.is_admin;
+
+-- Drop any old placeholder/removed rows left over from earlier seed data —
+-- the insert above only updates rows matching one of today's emails, it
+-- never removes emails that used to be in this list but no longer are.
+delete from allowed_users
+where email not in (
+  'fabian.joebstl@gmail.com', 'dominik@atlas.internal', 'florian@atlas.internal',
+  'mateo@atlas.internal', 'michael@atlas.internal', 'test@atlas.internal'
+);
+
+-- Column-limited so is_admin never leaks: this is the only thing readable
+-- pre-login (by the character picker), RLS can't restrict columns so a
+-- direct select policy on allowed_users would expose is_admin too.
+create or replace view public_roster as
+  select email, display_name, color, emoji from allowed_users;
+grant select on public_roster to anon, authenticated;
 
 -- Not readable by the client (no policies below) — only the security-definer
 -- trigger function can see it, so anon/authenticated keys can't enumerate it.
@@ -106,6 +129,9 @@ create table if not exists trips (
   -- chronological sorting. Null means "just show the year".
   year_group text,
   status trip_status not null default 'idea',
+  -- Independent of yearGroup: a fixed, small admin-defined bucket used for
+  -- the category filter chips (Solo trips, group trips, family trips, ...).
+  category trip_category not null default 'Friends',
   date_start date,
   date_end date,
   dates_confirmed boolean not null default false,
@@ -116,6 +142,7 @@ create table if not exists trips (
 );
 
 alter table trips add column if not exists year_group text;
+alter table trips add column if not exists category trip_category not null default 'Friends';
 
 create table if not exists stops (
   id uuid primary key default gen_random_uuid(),
@@ -155,10 +182,19 @@ create table if not exists approvals (
   unique (trip_id, user_id, kind)
 );
 
+-- ── Participants (who was actually on the trip — distinct from approvals,
+-- which track who's signed off on it happening) ────────────────────────
+create table if not exists trip_participants (
+  trip_id uuid not null references trips (id) on delete cascade,
+  profile_id uuid not null references profiles (id) on delete cascade,
+  primary key (trip_id, profile_id)
+);
+
 -- ── Row Level Security ───────────────────────────────────────────────────
 alter table profiles enable row level security;
 alter table trips enable row level security;
 alter table stops enable row level security;
+alter table trip_participants enable row level security;
 alter table ideas enable row level security;
 alter table approvals enable row level security;
 
@@ -249,6 +285,17 @@ drop policy if exists approvals_delete_own on approvals;
 create policy approvals_delete_own on approvals for delete
   using (user_id = auth.uid());
 
+-- trip_participants: everyone allowlisted can read; only the admin can write
+-- (who was actually on a trip is admin-curated, same as trips/stops).
+drop policy if exists trip_participants_select on trip_participants;
+create policy trip_participants_select on trip_participants for select
+  using (is_allowlisted(auth.uid()));
+
+drop policy if exists trip_participants_write_admin on trip_participants;
+create policy trip_participants_write_admin on trip_participants for all
+  using (is_admin_user(auth.uid()))
+  with check (is_admin_user(auth.uid()));
+
 -- ── Realtime ─────────────────────────────────────────────────────────────
 do $$ begin
   alter publication supabase_realtime add table trips;
@@ -261,4 +308,7 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table approvals;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table trip_participants;
 exception when duplicate_object then null; end $$;

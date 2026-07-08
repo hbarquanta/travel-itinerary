@@ -3,8 +3,8 @@
 // trip is being created or edited. Nothing here is persisted until
 // saveEditSession() is called.
 
-import type { Trip, TripStatus, Idea } from '../types'
-import { createTrip, updateTrip, createStop, updateStop, deleteStop, deleteIdea } from './queries'
+import type { Trip, TripStatus, TripCategory, Idea } from '../types'
+import { createTrip, updateTrip, createStop, updateStop, deleteStop, deleteIdea, setTripParticipants } from './queries'
 
 export interface EditStop {
   localId: string
@@ -28,6 +28,7 @@ export interface EditSession {
   /** Overrides the chip/grouping label (e.g. '2030+'); blank means "just show the year". */
   yearGroup: string
   status: TripStatus
+  category: TripCategory
   color: string
   dateStart: string
   dateEnd: string
@@ -35,6 +36,8 @@ export interface EditSession {
   description: string
   stops: EditStop[]
   deletedStopIds: string[]
+  /** Character ids actually on this trip — distinct from approvals. */
+  participantIds: string[]
 }
 
 const PALETTE = ['#fbbf24', '#f472b6', '#2dd4bf', '#a78bfa', '#fb7185', '#38bdf8', '#34d399', '#c084fc', '#67e8f9', '#facc15']
@@ -50,7 +53,11 @@ export function makeLocalId(): string {
   return `local-${Date.now()}-${localIdCounter}`
 }
 
-export function newEditSession(existingColors: string[], defaultYear: number): EditSession {
+export function newEditSession(
+  existingColors: string[],
+  defaultYear: number,
+  initialParticipantIds: string[] = [],
+): EditSession {
   return {
     tripId: null,
     promotingIdeaId: null,
@@ -58,6 +65,7 @@ export function newEditSession(existingColors: string[], defaultYear: number): E
     year: defaultYear,
     yearGroup: '',
     status: 'planned',
+    category: 'Friends',
     color: nextPaletteColor(existingColors),
     dateStart: '',
     dateEnd: '',
@@ -65,10 +73,11 @@ export function newEditSession(existingColors: string[], defaultYear: number): E
     description: '',
     stops: [],
     deletedStopIds: [],
+    participantIds: initialParticipantIds,
   }
 }
 
-export function editSessionFromTrip(trip: Trip): EditSession {
+export function editSessionFromTrip(trip: Trip, participantIds: string[]): EditSession {
   return {
     tripId: trip.id,
     promotingIdeaId: null,
@@ -76,6 +85,7 @@ export function editSessionFromTrip(trip: Trip): EditSession {
     year: trip.year,
     yearGroup: trip.yearGroup ?? '',
     status: trip.status,
+    category: trip.category,
     color: trip.color,
     dateStart: trip.dateStart ?? '',
     dateEnd: trip.dateEnd ?? '',
@@ -94,10 +104,16 @@ export function editSessionFromTrip(trip: Trip): EditSession {
         travelMode: s.travelMode ?? 'ground',
       })),
     deletedStopIds: [],
+    participantIds,
   }
 }
 
-export function editSessionFromIdea(idea: Idea, existingColors: string[], fallbackYear: number): EditSession {
+export function editSessionFromIdea(
+  idea: Idea,
+  existingColors: string[],
+  fallbackYear: number,
+  initialParticipantIds: string[] = [],
+): EditSession {
   return {
     tripId: null,
     promotingIdeaId: idea.id,
@@ -105,6 +121,7 @@ export function editSessionFromIdea(idea: Idea, existingColors: string[], fallba
     year: idea.yearSuggestion ?? fallbackYear,
     yearGroup: '',
     status: 'planned',
+    category: 'Friends',
     color: nextPaletteColor(existingColors),
     dateStart: '',
     dateEnd: '',
@@ -122,6 +139,7 @@ export function editSessionFromIdea(idea: Idea, existingColors: string[], fallba
       },
     ],
     deletedStopIds: [],
+    participantIds: initialParticipantIds,
   }
 }
 
@@ -134,6 +152,7 @@ export async function saveEditSession(session: EditSession, userId: string): Pro
     year: session.year,
     yearGroup: session.yearGroup.trim() || null,
     status: session.status,
+    category: session.category,
     dateStart: session.dateStart || null,
     dateEnd: session.dateEnd || null,
     datesConfirmed: session.datesConfirmed,
@@ -144,7 +163,10 @@ export async function saveEditSession(session: EditSession, userId: string): Pro
   const tripId = session.tripId ?? (await createTrip(tripInput, userId))
   if (session.tripId) await updateTrip(session.tripId, tripInput)
 
-  await Promise.all(session.deletedStopIds.map((id) => deleteStop(id)))
+  await Promise.all([
+    ...session.deletedStopIds.map((id) => deleteStop(id)),
+    setTripParticipants(tripId, session.participantIds),
+  ])
 
   await Promise.all(
     session.stops.map((stop, index) => {

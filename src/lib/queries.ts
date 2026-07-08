@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Trip, Stop, Idea, Approval, Profile, TripStatus, ApprovalKind } from '../types'
+import type { Trip, Stop, Idea, Approval, Profile, TripStatus, ApprovalKind, TripCategory } from '../types'
 
 function client() {
   if (!supabase) throw new Error('Supabase is not configured')
@@ -12,6 +12,7 @@ interface TripRow {
   year: number
   year_group: string | null
   status: TripStatus
+  category: TripCategory
   date_start: string | null
   date_end: string | null
   dates_confirmed: boolean
@@ -86,7 +87,7 @@ export async function fetchTrips(): Promise<Trip[]> {
   const db = client()
   const { data: tripRows, error: tripErr } = await db
     .from('trips')
-    .select('id, title, year, year_group, status, date_start, date_end, dates_confirmed, color, description')
+    .select('id, title, year, year_group, status, category, date_start, date_end, dates_confirmed, color, description')
     .order('year', { ascending: true })
   if (tripErr) throw tripErr
 
@@ -109,6 +110,7 @@ export async function fetchTrips(): Promise<Trip[]> {
     year: row.year,
     yearGroup: row.year_group ?? undefined,
     status: row.status,
+    category: row.category,
     dateStart: row.date_start,
     dateEnd: row.date_end,
     datesConfirmed: row.dates_confirmed,
@@ -123,6 +125,62 @@ export async function fetchProfiles(): Promise<Profile[]> {
   const { data, error } = await db.from('profiles').select('id, email, display_name, color, emoji, is_admin')
   if (error) throw error
   return ((data ?? []) as ProfileRow[]).map(toProfile)
+}
+
+export interface RosterEntry {
+  email: string
+  displayName: string
+  color: string
+  emoji: string
+}
+
+interface RosterRow {
+  email: string
+  display_name: string
+  color: string
+  emoji: string
+}
+
+/** Pre-login character roster for the picker screen — no session required. */
+export async function fetchRoster(): Promise<RosterEntry[]> {
+  const db = client()
+  const { data, error } = await db.from('public_roster').select('email, display_name, color, emoji')
+  if (error) throw error
+  return ((data ?? []) as RosterRow[]).map((row) => ({
+    email: row.email,
+    displayName: row.display_name,
+    color: row.color,
+    emoji: row.emoji,
+  }))
+}
+
+interface ParticipantRow {
+  trip_id: string
+  profile_id: string
+}
+
+export async function fetchParticipants(): Promise<Map<string, string[]>> {
+  const db = client()
+  const { data, error } = await db.from('trip_participants').select('trip_id, profile_id')
+  if (error) throw error
+  const byTrip = new Map<string, string[]>()
+  for (const row of (data ?? []) as ParticipantRow[]) {
+    if (!byTrip.has(row.trip_id)) byTrip.set(row.trip_id, [])
+    byTrip.get(row.trip_id)!.push(row.profile_id)
+  }
+  return byTrip
+}
+
+/** Replaces a trip's participant list wholesale (delete-all-then-insert). */
+export async function setTripParticipants(tripId: string, profileIds: string[]) {
+  const db = client()
+  const { error: delErr } = await db.from('trip_participants').delete().eq('trip_id', tripId)
+  if (delErr) throw delErr
+  if (profileIds.length === 0) return
+  const { error: insErr } = await db
+    .from('trip_participants')
+    .insert(profileIds.map((profileId) => ({ trip_id: tripId, profile_id: profileId })))
+  if (insErr) throw insErr
 }
 
 export async function fetchApprovals(): Promise<Approval[]> {
@@ -205,6 +263,7 @@ export interface TripInput {
   year: number
   yearGroup: string | null
   status: TripStatus
+  category: TripCategory
   dateStart: string | null
   dateEnd: string | null
   datesConfirmed: boolean
@@ -221,6 +280,7 @@ export async function createTrip(input: TripInput, createdBy: string): Promise<s
       year: input.year,
       year_group: input.yearGroup,
       status: input.status,
+      category: input.category,
       date_start: input.dateStart,
       date_end: input.dateEnd,
       dates_confirmed: input.datesConfirmed,
@@ -243,6 +303,7 @@ export async function updateTrip(id: string, input: TripInput) {
       year: input.year,
       year_group: input.yearGroup,
       status: input.status,
+      category: input.category,
       date_start: input.dateStart,
       date_end: input.dateEnd,
       dates_confirmed: input.datesConfirmed,

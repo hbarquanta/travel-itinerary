@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import MapView from './components/MapView'
 import YearChips from './components/YearChips'
+import CategoryChips from './components/CategoryChips'
 import Sidebar, { useSidebarOpen } from './components/Sidebar'
 import Login from './components/Login'
 import AddIdeaForm from './components/AddIdeaForm'
 import AdminTripPanel from './components/AdminTripPanel'
+import SettingsPanel from './components/SettingsPanel'
 import {
   trips as placeholderTrips,
   members as placeholderMembers,
@@ -55,7 +57,7 @@ function NotAllowlisted() {
 /** Gates the map behind Supabase auth once VITE_SUPABASE_URL/ANON_KEY are set. */
 function ConnectedApp() {
   const { loading: authLoading, session, profile } = useAuth()
-  const { trips, members, approvals, ideas, loading: dataLoading, refetch } = useTripsData()
+  const { trips, members, approvals, ideas, participants, loading: dataLoading, refetch } = useTripsData(!!profile)
 
   if (authLoading) return <LoadingScreen label="Signing in…" />
   if (!session) return <Login />
@@ -68,7 +70,9 @@ function ConnectedApp() {
       members={members}
       approvals={approvals}
       ideas={ideas}
+      participants={participants}
       currentUserId={profile.id}
+      currentUser={profile}
       isAdmin={profile.isAdmin}
       onToggleApproval={(tripId, kind) => {
         const mine = approvals.some((a) => a.tripId === tripId && a.userId === profile.id && a.kind === kind)
@@ -78,6 +82,7 @@ function ConnectedApp() {
       onAddIdea={(data) => addIdea({ ...data, createdBy: profile.id })}
       onDeleteIdea={(ideaId) => deleteIdea(ideaId)}
       onDataChanged={refetch}
+      onSignOut={() => supabase?.auth.signOut()}
     />
   )
 }
@@ -87,14 +92,19 @@ interface AtlasMapProps {
   members: Profile[]
   approvals: Approval[]
   ideas: Idea[]
+  /** Trip id -> participant profile ids; empty in local demo mode. */
+  participants?: Map<string, string[]>
   /** Signed-in user's id; null in local demo mode (no interactivity). */
   currentUserId: string | null
+  /** Signed-in user's full profile, for the header's "who am I" control. */
+  currentUser?: Profile | null
   isAdmin?: boolean
   onToggleApproval?: (tripId: string, kind: ApprovalKind) => void
   onAddIdea?: (data: { title: string; lat: number; lng: number; note: string | null; yearSuggestion: number | null }) => void
   onDeleteIdea?: (ideaId: string) => void
   /** Called after an admin save/delete commits, to refresh from Supabase immediately. */
   onDataChanged?: () => void
+  onSignOut?: () => void
 }
 
 function AtlasMap({
@@ -102,12 +112,15 @@ function AtlasMap({
   members,
   approvals,
   ideas,
+  participants = new Map(),
   currentUserId,
+  currentUser = null,
   isAdmin = false,
   onToggleApproval,
   onAddIdea,
   onDeleteIdea,
   onDataChanged,
+  onSignOut,
 }: AtlasMapProps) {
   const years = useMemo(() => {
     const bySortKey = new Map<string, number>()
@@ -126,6 +139,9 @@ function AtlasMap({
   const [activeYears, setActiveYears] = useState<Set<string>>(() =>
     years.includes('2025') ? new Set(['2025']) : new Set(years),
   )
+  // Default: just Friends, so a first-time visitor sees the group trips
+  // without Solo/Family clutter until they explicitly opt in.
+  const [activeCategories, setActiveCategories] = useState<Set<string>>(() => new Set(['Friends']))
   const [hoveredTripId, setHoveredTripId] = useState<string | null>(null)
   const [focus, setFocus] = useState<{ tripId: string; nonce: number } | null>(null)
   const [sidebarOpen, toggleSidebar] = useSidebarOpen()
@@ -133,12 +149,21 @@ function AtlasMap({
   const [pendingIdeaLocation, setPendingIdeaLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [editSession, setEditSession] = useState<EditSession | null>(null)
   const [saving, setSaving] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const toggleYear = (year: string) =>
     setActiveYears((prev) => {
       const next = new Set(prev)
       if (next.has(year)) next.delete(year)
       else next.add(year)
+      return next
+    })
+
+  const toggleCategory = (category: string) =>
+    setActiveCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(category)) next.delete(category)
+      else next.add(category)
       return next
     })
 
@@ -179,6 +204,7 @@ function AtlasMap({
       <MapView
         trips={trips}
         activeYears={activeYears}
+        activeCategories={activeCategories}
         hoveredTripId={hoveredTripId}
         onHoverTrip={setHoveredTripId}
         focus={focus}
@@ -222,9 +248,21 @@ function AtlasMap({
           <h1>Atlas</h1>
           <p>five friends · one map</p>
         </div>
+        {currentUser && (
+          <button type="button" className="settings-gear" title="Settings" onClick={() => setSettingsOpen(true)}>
+            ⚙️
+          </button>
+        )}
+        {currentUser && onSignOut && (
+          <button type="button" className="whoami" title="Switch character" onClick={onSignOut}>
+            {currentUser.emoji} {currentUser.displayName}
+          </button>
+        )}
       </header>
+      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       <div className="chips-wrap">
         <YearChips years={years} activeYears={activeYears} onToggle={toggleYear} />
+        <CategoryChips activeCategories={activeCategories} onToggle={toggleCategory} />
       </div>
       {currentUserId !== null && onAddIdea && (
         <button
@@ -251,6 +289,7 @@ function AtlasMap({
       {editSession && (
         <AdminTripPanel
           session={editSession}
+          members={members}
           onChange={(patch) => setEditSession((s) => (s ? { ...s, ...patch } : s))}
           onUpdateStop={(localId, patch) =>
             setEditSession((s) =>
@@ -290,7 +329,9 @@ function AtlasMap({
         members={members}
         approvals={approvals}
         ideas={ideas}
+        participants={participants}
         activeYears={activeYears}
+        activeCategories={activeCategories}
         hoveredTripId={hoveredTripId}
         onHoverTrip={setHoveredTripId}
         onFocusTrip={focusTrip}
@@ -300,10 +341,14 @@ function AtlasMap({
         isAdmin={isAdmin}
         onToggleApproval={onToggleApproval}
         onDeleteIdea={onDeleteIdea}
-        onNewTrip={() => setEditSession(newEditSession(trips.map((t) => t.color), currentYear))}
-        onEditTrip={(trip) => setEditSession(editSessionFromTrip(trip))}
+        onNewTrip={() =>
+          setEditSession(newEditSession(trips.map((t) => t.color), currentYear, currentUserId ? [currentUserId] : []))
+        }
+        onEditTrip={(trip) => setEditSession(editSessionFromTrip(trip, participants.get(trip.id) ?? []))}
         onPromoteIdea={(idea) =>
-          setEditSession(editSessionFromIdea(idea, trips.map((t) => t.color), currentYear))
+          setEditSession(
+            editSessionFromIdea(idea, trips.map((t) => t.color), currentYear, currentUserId ? [currentUserId] : []),
+          )
         }
       />
     </div>

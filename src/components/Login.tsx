@@ -1,19 +1,32 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { fetchRoster, type RosterEntry } from '../lib/queries'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [roster, setRoster] = useState<RosterEntry[] | null>(null)
+  const [rosterError, setRosterError] = useState(false)
+  const [selected, setSelected] = useState<RosterEntry | null>(null)
+  const [pin, setPin] = useState('')
+  const [status, setStatus] = useState<'idle' | 'checking' | 'error'>('idle')
 
-  async function handleSubmit(e: FormEvent) {
+  useEffect(() => {
+    fetchRoster()
+      .then(setRoster)
+      .catch(() => setRosterError(true))
+  }, [])
+
+  function pickCharacter(entry: RosterEntry) {
+    setSelected(entry)
+    setPin('')
+    setStatus('idle')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!supabase) return
-    setStatus('sending')
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.href },
-    })
-    setStatus(error ? 'error' : 'sent')
+    if (!supabase || !selected) return
+    setStatus('checking')
+    const { error } = await supabase.auth.signInWithPassword({ email: selected.email, password: pin })
+    setStatus(error ? 'error' : 'idle')
   }
 
   return (
@@ -21,21 +34,52 @@ export default function Login() {
       <div className="login-card glass">
         <span className="brand-mark">🧭</span>
         <h1>Atlas</h1>
-        <p>Enter your email — we'll send you a magic link to sign in.</p>
-        <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            required
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={status === 'sending' || status === 'sent'}
-          />
-          <button type="submit" disabled={status === 'sending' || status === 'sent'}>
-            {status === 'sent' ? 'Check your email ✓' : 'Send magic link'}
-          </button>
-        </form>
-        {status === 'error' && <p className="login-error">Something went wrong — try again.</p>}
+
+        {!selected ? (
+          <>
+            <p>Who are you?</p>
+            {rosterError && <p className="login-error">Couldn't load the roster — try refreshing.</p>}
+            <div className="roster-grid">
+              {(roster ?? []).map((entry) => (
+                <button
+                  key={entry.email}
+                  type="button"
+                  className="roster-btn"
+                  style={{ '--avatar-color': entry.color } as React.CSSProperties}
+                  onClick={() => pickCharacter(entry)}
+                >
+                  <span className="roster-emoji">{entry.emoji}</span>
+                  <span className="roster-name">{entry.displayName}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <p>
+              Enter {selected.displayName}'s PIN <span className="roster-emoji">{selected.emoji}</span>
+            </p>
+            <form onSubmit={handleSubmit}>
+              <input
+                type="password"
+                inputMode="numeric"
+                autoFocus
+                required
+                placeholder="PIN"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                disabled={status === 'checking'}
+              />
+              <button type="submit" disabled={status === 'checking' || !pin}>
+                {status === 'checking' ? 'Checking…' : 'Enter'}
+              </button>
+              <button type="button" className="login-back" onClick={() => setSelected(null)}>
+                ‹ Not {selected.displayName}?
+              </button>
+            </form>
+            {status === 'error' && <p className="login-error">Wrong PIN — try again.</p>}
+          </>
+        )}
       </div>
     </div>
   )

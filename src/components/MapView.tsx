@@ -13,6 +13,7 @@ const DRAW_IN_MS = 2000
 interface MapViewProps {
   trips: Trip[]
   activeYears: Set<string>
+  activeCategories: Set<string>
   hoveredTripId: string | null
   onHoverTrip: (tripId: string | null) => void
   /** Bump `nonce` to fly to a trip even if the id is unchanged. */
@@ -67,6 +68,7 @@ interface SegmentMeta {
   id: string
   tripId: string
   yearGroup: string
+  category: string
   color: string
   mode: 'flight' | 'ground'
   coords: LngLat[]
@@ -97,6 +99,7 @@ function buildStopsData(trips: Trip[], tripAnims: Map<string, TripAnim>): Featur
           properties: {
             tripId: t.id,
             yearGroup: yearGroupOf(t),
+            category: t.category,
             color: t.color,
             name: s.name,
             notes: s.notes ?? '',
@@ -133,7 +136,7 @@ function segmentsFeatureCollection(
       .filter((s) => s.mode === mode)
       .map((s) => ({
         type: 'Feature',
-        properties: { tripId: s.tripId, yearGroup: s.yearGroup, color: s.color },
+        properties: { tripId: s.tripId, yearGroup: s.yearGroup, category: s.category, color: s.color },
         geometry: {
           type: 'LineString',
           coordinates: sliceCoordinates(s.coords, segmentRatioFor(tripAnims.get(s.tripId), s.id)),
@@ -171,6 +174,7 @@ function buildSegmentsAndAnims(trips: Trip[], previous: Map<string, TripAnim>) {
         id,
         tripId: trip.id,
         yearGroup: yearGroupOf(trip),
+        category: trip.category,
         color: trip.color,
         mode: seg.mode,
         coords: seg.coords,
@@ -192,6 +196,7 @@ const DASH_STEPS: number[][] = [
 export default function MapView({
   trips,
   activeYears,
+  activeCategories,
   hoveredTripId,
   onHoverTrip,
   focus,
@@ -330,7 +335,7 @@ export default function MapView({
           'circle-color': ['get', 'color'],
           'circle-radius': ['case', ['==', ['get', 'revealed'], 1], 4.5, 0],
           'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 1.5,
+          'circle-stroke-width': ['case', ['==', ['get', 'revealed'], 1], 1.5, 0],
         },
       })
 
@@ -463,27 +468,33 @@ export default function MapView({
     }
   }, [trips, ready])
 
-  // Year filter + draw-in trigger for newly-visible trips + fit bounds.
+  // Year + category filter + draw-in trigger for newly-visible trips + fit bounds.
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready) return
+    const isVisible = (t: Trip) => activeYears.has(yearGroupOf(t)) && activeCategories.has(t.category)
     const groups = [...activeYears]
-    const filter: maplibregl.FilterSpecification = ['in', ['get', 'yearGroup'], ['literal', groups]]
+    const categories = [...activeCategories]
+    const filter: maplibregl.FilterSpecification = [
+      'all',
+      ['in', ['get', 'yearGroup'], ['literal', groups]],
+      ['in', ['get', 'category'], ['literal', categories]],
+    ]
     for (const layer of ['route-glow', 'route-line', 'route-flow', 'flight-glow', 'flight-line', 'stop-glow', 'stop-core']) {
       map.setFilter(layer, filter)
     }
     for (const trip of trips) {
       const marker = badgeMarkers.current.get(trip.id)
-      if (marker) marker.getElement().classList.toggle('hidden', !activeYears.has(yearGroupOf(trip)))
+      if (marker) marker.getElement().classList.toggle('hidden', !isVisible(trip))
     }
 
-    const visibleIds = new Set(trips.filter((t) => activeYears.has(yearGroupOf(t))).map((t) => t.id))
+    const visibleIds = new Set(trips.filter(isVisible).map((t) => t.id))
     for (const [tripId, anim] of tripAnimsRef.current) {
       if (visibleIds.has(tripId) && !prevVisible.current.has(tripId)) anim.ratio = 0
     }
     prevVisible.current = visibleIds
 
-    const visible = trips.filter((t) => activeYears.has(yearGroupOf(t)))
+    const visible = trips.filter(isVisible)
     if (visible.length === 0) return
     const bounds = new maplibregl.LngLatBounds()
     for (const t of visible) for (const s of t.stops) bounds.extend([s.lng, s.lat])
@@ -492,7 +503,7 @@ export default function MapView({
       duration: 1400,
       maxZoom: 5.5,
     })
-  }, [activeYears, trips, ready, sidebarPadding])
+  }, [activeYears, activeCategories, trips, ready, sidebarPadding])
 
   // Hover highlighting: dim everything that isn't the hovered trip.
   useEffect(() => {
@@ -627,10 +638,10 @@ export default function MapView({
         <div className="loading-globe">🧭</div>
         <p>Charting the atlas…</p>
       </div>
-      {ready && activeYears.size === 0 && (
+      {ready && (activeYears.size === 0 || activeCategories.size === 0) && (
         <div className="empty-state glass">
-          <p>No years selected</p>
-          <span>Toggle a year above to see the trips.</span>
+          <p>No trips selected</p>
+          <span>Toggle a year or category above to see the trips.</span>
         </div>
       )}
     </>

@@ -23,7 +23,10 @@ interface SidebarProps {
   members: Profile[]
   approvals: Approval[]
   ideas: Idea[]
+  /** Trip id -> participant profile ids. */
+  participants: Map<string, string[]>
   activeYears: Set<string>
+  activeCategories: Set<string>
   hoveredTripId: string | null
   onHoverTrip: (tripId: string | null) => void
   onFocusTrip: (tripId: string) => void
@@ -44,7 +47,9 @@ export default function Sidebar({
   members,
   approvals,
   ideas,
+  participants,
   activeYears,
+  activeCategories,
   hoveredTripId,
   onHoverTrip,
   onFocusTrip,
@@ -106,6 +111,8 @@ export default function Sidebar({
                   trip={trip}
                   members={members}
                   approvals={approvals.filter((a) => a.tripId === trip.id)}
+                  participantIds={participants.get(trip.id) ?? []}
+                  categoryOff={!activeCategories.has(trip.category)}
                   hovered={hoveredTripId === trip.id}
                   onHover={onHoverTrip}
                   onFocus={onFocusTrip}
@@ -168,6 +175,8 @@ function TripCard({
   trip,
   members,
   approvals,
+  participantIds,
+  categoryOff,
   hovered,
   onHover,
   onFocus,
@@ -179,6 +188,8 @@ function TripCard({
   trip: Trip
   members: Profile[]
   approvals: Approval[]
+  participantIds: string[]
+  categoryOff: boolean
   hovered: boolean
   onHover: (id: string | null) => void
   onFocus: (id: string) => void
@@ -191,10 +202,11 @@ function TripCard({
   const tripApproved = new Set(approvals.filter((a) => a.kind === 'trip').map((a) => a.userId))
   const datesApproved = new Set(approvals.filter((a) => a.kind === 'dates').map((a) => a.userId))
   const allIn = members.every((m) => tripApproved.has(m.id))
+  const participants = members.filter((m) => participantIds.includes(m.id))
 
   return (
     <article
-      className={`trip-card${hovered ? ' hovered' : ''}${allIn ? ' all-in' : ''}`}
+      className={`trip-card${hovered ? ' hovered' : ''}${allIn ? ' all-in' : ''}${categoryOff ? ' category-off' : ''}`}
       style={{ '--trip-color': trip.color } as React.CSSProperties}
       onMouseEnter={() => onHover(trip.id)}
       onMouseLeave={() => onHover(null)}
@@ -227,6 +239,15 @@ function TripCard({
         {trip.datesConfirmed && <span className="dates-confirmed" title="Dates confirmed">📅✓</span>}
       </div>
       {trip.description && <p className="trip-desc">{trip.description}</p>}
+      {participants.length > 0 && (
+        <div className="participant-row" title="Who was actually on this trip">
+          {participants.map((m) => (
+            <span key={m.id} className="avatar participant" style={{ '--avatar-color': m.color } as React.CSSProperties}>
+              {m.emoji}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="approval-row" title="Approvals — filled: trip, corner tick: dates">
         {members.map((m) => {
           const approved = tripApproved.has(m.id)

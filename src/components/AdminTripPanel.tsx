@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import type { EditSession, EditStop } from '../lib/editSession'
-import type { TripStatus } from '../types'
+import type { TripStatus, TripCategory, Profile } from '../types'
+import { CATEGORIES } from './CategoryChips'
 
 const STATUS_OPTIONS: TripStatus[] = ['idea', 'planned', 'locked', 'past']
 const COLOR_PALETTE = ['#fbbf24', '#f472b6', '#2dd4bf', '#a78bfa', '#fb7185', '#38bdf8', '#34d399', '#c084fc', '#67e8f9', '#facc15']
 
 interface AdminTripPanelProps {
   session: EditSession
+  members: Profile[]
   onChange: (patch: Partial<EditSession>) => void
   onUpdateStop: (localId: string, patch: Partial<EditStop>) => void
   onMoveStop: (localId: string, direction: -1 | 1) => void
@@ -19,6 +21,7 @@ interface AdminTripPanelProps {
 
 export default function AdminTripPanel({
   session,
+  members,
   onChange,
   onUpdateStop,
   onMoveStop,
@@ -64,6 +67,16 @@ export default function AdminTripPanel({
               ))}
             </select>
           </label>
+          <label className="admin-field">
+            <span>Category</span>
+            <select value={session.category} onChange={(e) => onChange({ category: e.target.value as TripCategory })}>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <label className="admin-field">
@@ -74,6 +87,33 @@ export default function AdminTripPanel({
             placeholder="Leave blank to just show the year, e.g. 2030+"
           />
         </label>
+
+        <div className="admin-field">
+          <span>Participants</span>
+          <div className="participant-toggle-row">
+            {members.map((m) => {
+              const on = session.participantIds.includes(m.id)
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`avatar participant-toggle${on ? ' approved' : ''}`}
+                  style={{ '--avatar-color': m.color } as React.CSSProperties}
+                  title={m.displayName}
+                  onClick={() =>
+                    onChange({
+                      participantIds: on
+                        ? session.participantIds.filter((id) => id !== m.id)
+                        : [...session.participantIds, m.id],
+                    })
+                  }
+                >
+                  {m.emoji}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
         <div className="admin-field">
           <span>Color</span>

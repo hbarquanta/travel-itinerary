@@ -3,6 +3,7 @@
 
 export type TripStatus = 'idea' | 'planned' | 'locked' | 'past'
 export type ApprovalKind = 'trip' | 'dates'
+export type TripCategory = 'Friends' | 'Solo' | 'Family'
 
 export interface Profile {
   id: string
@@ -33,6 +34,7 @@ export interface Trip {
   title: string
   year: number
   status: TripStatus
+  category: TripCategory
   dateStart?: string | null
   dateEnd?: string | null
   datesConfirmed: boolean

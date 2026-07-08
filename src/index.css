@@ -251,6 +251,49 @@ body,
   font-size: 12.5px;
 }
 
+.roster-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.roster-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 6px;
+  border-radius: 12px;
+  border: 1.5px solid color-mix(in srgb, var(--avatar-color) 45%, var(--panel-border));
+  background: color-mix(in srgb, var(--avatar-color) 10%, transparent);
+  color: var(--text);
+  font: 600 12px var(--font);
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s;
+}
+
+.roster-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--avatar-color) 45%, transparent);
+}
+
+.roster-emoji {
+  font-size: 26px;
+}
+
+.roster-name {
+  white-space: nowrap;
+}
+
+.login-back {
+  background: none !important;
+  color: var(--text-dim) !important;
+  font-weight: 500 !important;
+  padding: 4px !important;
+}
+
 /* ── Brand (top left) ── */
 .brand {
   position: absolute;
@@ -287,6 +330,69 @@ body,
   color: var(--text-dim);
 }
 
+.whoami {
+  margin-left: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: 600 12px var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.whoami:hover {
+  border-color: var(--accent-b);
+}
+
+.settings-gear {
+  margin-left: 8px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--panel-border);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.settings-gear:hover {
+  border-color: var(--accent-b);
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 7, 11, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.settings-panel {
+  width: min(340px, 88vw);
+  padding: 20px;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.settings-saved {
+  margin: 0;
+  color: #4ade80;
+  font-size: 12.5px;
+}
+
 /* ── Year chips (top center) ── */
 .chips-wrap {
   position: absolute;
@@ -294,6 +400,19 @@ body,
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-chips {
+  padding: 4px;
+}
+
+.category-chips .chip {
+  padding: 6px 14px;
+  font-size: 12px;
 }
 
 .year-chips {
@@ -449,6 +568,10 @@ section.year-off {
   opacity: 0.38;
 }
 
+.trip-card.category-off {
+  opacity: 0.38;
+}
+
 /* ── Trip cards ── */
 .trip-card {
   --trip-color: #fff;
@@ -561,6 +684,25 @@ section.year-off {
   color: var(--text-dim);
 }
 
+/* ── Participants row (who was actually on the trip) ── */
+.participant-row {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.avatar.participant {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  border-style: solid;
+  border-color: var(--avatar-color);
+  background: color-mix(in srgb, var(--avatar-color) 22%, transparent);
+  filter: none;
+  opacity: 1;
+  cursor: default;
+}
+
 /* ── Approvals row ── */
 .approval-row {
   display: flex;
@@ -602,6 +744,21 @@ section.year-off {
 }
 
 .avatar.own:hover {
+  transform: scale(1.12);
+}
+
+.participant-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 6px;
+}
+
+.avatar.participant-toggle {
+  cursor: pointer;
+}
+
+.avatar.participant-toggle:hover {
   transform: scale(1.12);
 }
 
@@ -1220,8 +1377,28 @@ section.year-off {
 
   .chips-wrap {
     top: auto;
-    bottom: calc(42dvh + 14px);
-    left: 50%;
+    bottom: 14px;
+    left: 12px;
+    right: 12px;
+    transform: none;
+    align-items: stretch;
+  }
+
+  /* Wrapping wastes vertical space stacked two bars deep on a phone —
+     scroll horizontally instead so the whole bar stays a thin strip. */
+  .year-chips,
+  .category-chips {
+    max-width: none;
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .year-chips::-webkit-scrollbar,
+  .category-chips::-webkit-scrollbar {
+    display: none;
   }
 
   .sidebar {
@@ -1238,7 +1415,16 @@ section.year-off {
     transform: translateY(calc(100% + 20px));
   }
 
+  /* Reuse the same chevron button as desktop, just rotated 90° — the same
+     '‹'/'›' glyphs then correctly read as "pull up" / "push down" for a
+     bottom-sheet instead of "slide in/out from the right". */
   .sidebar-toggle {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    top: 70px;
+    right: 18px;
+    transform: rotate(90deg);
+    transition: color 0.2s;
   }
 }
