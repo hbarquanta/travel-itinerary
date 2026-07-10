@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import MapView from './components/MapView'
 import YearChips from './components/YearChips'
 import CategoryChips from './components/CategoryChips'
@@ -148,8 +148,13 @@ function AtlasMap({
   const [addIdeaMode, setAddIdeaMode] = useState(false)
   const [pendingIdeaLocation, setPendingIdeaLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [editSession, setEditSession] = useState<EditSession | null>(null)
+  /** True once the open edit session has any unsaved change — gates the
+   *  discard-changes confirmation on close. */
+  const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [whoamiOpen, setWhoamiOpen] = useState(false)
+  const [savedToast, setSavedToast] = useState(false)
 
   const toggleYear = (year: string) =>
     setActiveYears((prev) => {
@@ -175,13 +180,23 @@ function AtlasMap({
 
   const currentYear = new Date().getFullYear()
 
+  /** Closes the trip editor, confirming first if there are unsaved edits. */
+  function closeEditSession() {
+    if (dirty && !window.confirm('Discard unsaved changes?')) return
+    setEditSession(null)
+    setDirty(false)
+  }
+
   async function handleSaveSession() {
     if (!editSession || !currentUserId) return
     setSaving(true)
     try {
       await saveEditSession(editSession, currentUserId)
       setEditSession(null)
+      setDirty(false)
       onDataChanged?.()
+      setSavedToast(true)
+      setTimeout(() => setSavedToast(false), 2200)
     } finally {
       setSaving(false)
     }
@@ -193,11 +208,26 @@ function AtlasMap({
     try {
       await deleteTrip(editSession.tripId)
       setEditSession(null)
+      setDirty(false)
       onDataChanged?.()
     } finally {
       setSaving(false)
     }
   }
+
+  // Escape closes whichever panel/menu is currently open, topmost first.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (editSession) closeEditSession()
+      else if (settingsOpen) setSettingsOpen(false)
+      else if (whoamiOpen) setWhoamiOpen(false)
+      else if (pendingIdeaLocation) setPendingIdeaLocation(null)
+      else if (addIdeaMode) setAddIdeaMode(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  })
 
   return (
     <div className="app">
@@ -215,7 +245,7 @@ function AtlasMap({
         onMapClickForIdea={(lat, lng) => setPendingIdeaLocation({ lat, lng })}
         pendingIdeaLocation={pendingIdeaLocation}
         editStops={editSession?.stops ?? null}
-        onAddEditStop={(lat, lng) =>
+        onAddEditStop={(lat, lng) => {
           setEditSession((s) =>
             s
               ? {
@@ -235,18 +265,19 @@ function AtlasMap({
                 }
               : s,
           )
-        }
-        onDragEditStop={(localId, lat, lng) =>
+          setDirty(true)
+        }}
+        onDragEditStop={(localId, lat, lng) => {
           setEditSession((s) =>
             s ? { ...s, stops: s.stops.map((st) => (st.localId === localId ? { ...st, lat, lng } : st)) } : s,
           )
-        }
+          setDirty(true)
+        }}
       />
       <header className="brand glass">
         <span className="brand-mark">🧭</span>
         <div>
           <h1>Atlas</h1>
-          <p>five friends · one map</p>
         </div>
         {currentUser && (
           <button type="button" className="settings-gear" title="Settings" onClick={() => setSettingsOpen(true)}>
@@ -254,9 +285,36 @@ function AtlasMap({
           </button>
         )}
         {currentUser && onSignOut && (
-          <button type="button" className="whoami" title="Switch character" onClick={onSignOut}>
-            {currentUser.emoji} {currentUser.displayName}
-          </button>
+          <div className="whoami-wrap">
+            <button
+              type="button"
+              className="whoami"
+              title="Account"
+              onClick={() => setWhoamiOpen((o) => !o)}
+            >
+              {currentUser.emoji} {currentUser.displayName}
+            </button>
+            {whoamiOpen && (
+              <>
+                <div className="dropdown-backdrop" onClick={() => setWhoamiOpen(false)} />
+                <div className="whoami-menu glass">
+                  <span className="whoami-menu-label">
+                    Signed in as {currentUser.emoji} {currentUser.displayName}
+                  </span>
+                  <button
+                    type="button"
+                    className="whoami-signout"
+                    onClick={() => {
+                      setWhoamiOpen(false)
+                      onSignOut()
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </header>
       {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
@@ -290,13 +348,17 @@ function AtlasMap({
         <AdminTripPanel
           session={editSession}
           members={members}
-          onChange={(patch) => setEditSession((s) => (s ? { ...s, ...patch } : s))}
-          onUpdateStop={(localId, patch) =>
+          onChange={(patch) => {
+            setEditSession((s) => (s ? { ...s, ...patch } : s))
+            setDirty(true)
+          }}
+          onUpdateStop={(localId, patch) => {
             setEditSession((s) =>
               s ? { ...s, stops: s.stops.map((st) => (st.localId === localId ? { ...st, ...patch } : st)) } : s,
             )
-          }
-          onMoveStop={(localId, direction) =>
+            setDirty(true)
+          }}
+          onMoveStop={(localId, direction) => {
             setEditSession((s) => {
               if (!s) return s
               const i = s.stops.findIndex((st) => st.localId === localId)
@@ -306,8 +368,9 @@ function AtlasMap({
               ;[stops[i], stops[j]] = [stops[j], stops[i]]
               return { ...s, stops }
             })
-          }
-          onRemoveStop={(localId) =>
+            setDirty(true)
+          }}
+          onRemoveStop={(localId) => {
             setEditSession((s) => {
               if (!s) return s
               const stop = s.stops.find((st) => st.localId === localId)
@@ -317,13 +380,15 @@ function AtlasMap({
                 deletedStopIds: stop?.id ? [...s.deletedStopIds, stop.id] : s.deletedStopIds,
               }
             })
-          }
+            setDirty(true)
+          }}
           onSave={handleSaveSession}
-          onCancel={() => setEditSession(null)}
+          onCancel={closeEditSession}
           onDeleteTrip={editSession.tripId ? handleDeleteTrip : undefined}
           saving={saving}
         />
       )}
+      {savedToast && <div className="toast glass">Trip saved ✓</div>}
       <Sidebar
         trips={trips}
         members={members}
@@ -341,15 +406,20 @@ function AtlasMap({
         isAdmin={isAdmin}
         onToggleApproval={onToggleApproval}
         onDeleteIdea={onDeleteIdea}
-        onNewTrip={() =>
+        onNewTrip={() => {
           setEditSession(newEditSession(trips.map((t) => t.color), currentYear, currentUserId ? [currentUserId] : []))
-        }
-        onEditTrip={(trip) => setEditSession(editSessionFromTrip(trip, participants.get(trip.id) ?? []))}
-        onPromoteIdea={(idea) =>
+          setDirty(false)
+        }}
+        onEditTrip={(trip) => {
+          setEditSession(editSessionFromTrip(trip, participants.get(trip.id) ?? []))
+          setDirty(false)
+        }}
+        onPromoteIdea={(idea) => {
           setEditSession(
             editSessionFromIdea(idea, trips.map((t) => t.color), currentYear, currentUserId ? [currentUserId] : []),
           )
-        }
+          setDirty(false)
+        }}
       />
     </div>
   )
