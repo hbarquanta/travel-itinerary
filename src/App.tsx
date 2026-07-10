@@ -292,7 +292,7 @@ function AtlasMap({
               title="Account"
               onClick={() => setWhoamiOpen((o) => !o)}
             >
-              {currentUser.emoji} {currentUser.displayName}
+              {currentUser.emoji} <span className="whoami-name">{currentUser.displayName}</span>
             </button>
             {whoamiOpen && (
               <>

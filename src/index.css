@@ -1450,6 +1450,41 @@ section.year-off {
     display: none;
   }
 
+  /* Tighten everything so logo + gear + account pill always fit on a
+     narrow phone without overflowing off the right edge of the screen. */
+  .brand {
+    left: 10px;
+    top: 10px;
+    gap: 8px;
+    padding: 8px 10px;
+    max-width: calc(100vw - 20px);
+  }
+
+  .brand h1 {
+    font-size: 16px;
+    letter-spacing: 1.5px;
+  }
+
+  .settings-gear {
+    margin-left: 0;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+  }
+
+  .whoami-wrap {
+    margin-left: 0;
+    flex-shrink: 0;
+  }
+
+  .whoami-name {
+    display: none;
+  }
+
+  .whoami {
+    padding: 8px 10px;
+  }
+
   .chips-wrap {
     top: auto;
     bottom: 14px;
@@ -1497,8 +1532,11 @@ section.year-off {
     display: flex;
     align-items: center;
     justify-content: center;
-    top: 70px;
-    right: 18px;
+    top: 64px;
+    right: 14px;
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
     transform: rotate(90deg);
     transition: color 0.2s;
   }

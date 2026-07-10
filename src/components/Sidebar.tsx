@@ -277,6 +277,8 @@ function TripCard({
 }
 
 export function useSidebarOpen() {
-  const [open, setOpen] = useState(() => window.innerWidth > 900)
+  // Closed by default everywhere — the trip list is easy to spoil future
+  // years/trips with, so it should be an explicit open, not a first sight.
+  const [open, setOpen] = useState(false)
   return [open, () => setOpen((o) => !o)] as const
 }
