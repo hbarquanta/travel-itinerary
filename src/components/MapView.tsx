@@ -8,7 +8,7 @@ import { tripRouteSegments, concatSegments, topmostPoint, sliceCoordinates, coor
 import type { EditStop } from '../lib/editSession'
 
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark'
-const DRAW_IN_MS = 2000
+const DRAW_IN_MS = 4000
 
 interface MapViewProps {
   trips: Trip[]
