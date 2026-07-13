@@ -30,21 +30,29 @@ create table if not exists allowed_users (
   display_name text not null,
   color text not null,
   emoji text not null,
-  is_admin boolean not null default false
+  is_admin boolean not null default false,
+  -- Excluded from the pre-login picker by default (e.g. the Test account) —
+  -- still a real, working login, just not shown to everyone. Revealed only
+  -- via the admin-only toggle in Settings (see sync_profile_to_allowed_users
+  -- doesn't touch this; it's set directly, not through a profile field).
+  hidden boolean not null default false
 );
 
-insert into allowed_users (email, display_name, color, emoji, is_admin) values
-  ('fabian.joebstl@gmail.com',   'Fabian',  '#f97316', '🦊', true),
-  ('dominik@atlas.internal',     'Dominik', '#8b5cf6', '🐙', false),
-  ('florian@atlas.internal',     'Florian', '#22d3ee', '🦋', false),
-  ('mateo@atlas.internal',       'Mateo',   '#a3e635', '🦅', false),
-  ('michael@atlas.internal',     'Michael', '#f43f5e', '🐝', false),
-  ('test@atlas.internal',        'Test',    '#94a3b8', '🧪', false)
+alter table allowed_users add column if not exists hidden boolean not null default false;
+
+insert into allowed_users (email, display_name, color, emoji, is_admin, hidden) values
+  ('fabian.joebstl@gmail.com',   'Fabian',  '#f97316', '🦊', true,  false),
+  ('dominik@atlas.internal',     'Dominik', '#8b5cf6', '🐙', false, false),
+  ('florian@atlas.internal',     'Florian', '#22d3ee', '🦋', false, false),
+  ('mateo@atlas.internal',       'Mateo',   '#a3e635', '🦅', false, false),
+  ('michael@atlas.internal',     'Michael', '#f43f5e', '🐝', false, false),
+  ('test@atlas.internal',        'Test',    '#94a3b8', '🧪', false, true)
 on conflict (email) do update set
   display_name = excluded.display_name,
   color = excluded.color,
   emoji = excluded.emoji,
-  is_admin = excluded.is_admin;
+  is_admin = excluded.is_admin,
+  hidden = excluded.hidden;
 
 -- Drop any old placeholder/removed rows left over from earlier seed data —
 -- the insert above only updates rows matching one of today's emails, it
@@ -57,9 +65,14 @@ where email not in (
 
 -- Column-limited so is_admin never leaks: this is the only thing readable
 -- pre-login (by the character picker), RLS can't restrict columns so a
--- direct select policy on allowed_users would expose is_admin too.
+-- direct select policy on allowed_users would expose is_admin too. `hidden`
+-- is fine to expose — it's just a display hint, the frontend filters it,
+-- not a security boundary (the account is still PIN-protected either way).
+-- Ordered explicitly (not left to physical row order, which drifts every
+-- time a row is updated) so the picker's layout is always the same.
 create or replace view public_roster as
-  select email, display_name, color, emoji from allowed_users;
+  select email, display_name, color, emoji, hidden from allowed_users
+  order by is_admin desc, display_name asc;
 grant select on public_roster to anon, authenticated;
 
 -- Not readable by the client (no policies below) — only the security-definer

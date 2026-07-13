@@ -124,7 +124,11 @@ export async function fetchTrips(): Promise<Trip[]> {
 
 export async function fetchProfiles(): Promise<Profile[]> {
   const db = client()
-  const { data, error } = await db.from('profiles').select('id, email, display_name, color, emoji, is_admin')
+  const { data, error } = await db
+    .from('profiles')
+    .select('id, email, display_name, color, emoji, is_admin')
+    .order('is_admin', { ascending: false })
+    .order('display_name', { ascending: true })
   if (error) throw error
   return ((data ?? []) as ProfileRow[]).map(toProfile)
 }
@@ -134,6 +138,7 @@ export interface RosterEntry {
   displayName: string
   color: string
   emoji: string
+  hidden: boolean
 }
 
 interface RosterRow {
@@ -141,18 +146,21 @@ interface RosterRow {
   display_name: string
   color: string
   emoji: string
+  hidden: boolean
 }
 
-/** Pre-login character roster for the picker screen — no session required. */
+/** Pre-login character roster for the picker screen — no session required.
+ *  Already ordered (admin first, then alphabetical) by the view itself. */
 export async function fetchRoster(): Promise<RosterEntry[]> {
   const db = client()
-  const { data, error } = await db.from('public_roster').select('email, display_name, color, emoji')
+  const { data, error } = await db.from('public_roster').select('email, display_name, color, emoji, hidden')
   if (error) throw error
   return ((data ?? []) as RosterRow[]).map((row) => ({
     email: row.email,
     displayName: row.display_name,
     color: row.color,
     emoji: row.emoji,
+    hidden: row.hidden,
   }))
 }
 

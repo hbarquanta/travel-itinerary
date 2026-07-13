@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchRoster, type RosterEntry } from '../lib/queries'
 
+/** Set by an admin's "reveal hidden characters" button in Settings so the
+ *  next time the picker renders (after signing out), hidden entries like
+ *  Test show up too. Session-only — clears itself once the tab closes. */
+export const REVEAL_HIDDEN_KEY = 'atlas-reveal-hidden'
+
 export default function Login() {
   const [roster, setRoster] = useState<RosterEntry[] | null>(null)
   const [rosterError, setRosterError] = useState(false)
@@ -14,6 +19,9 @@ export default function Login() {
       .then(setRoster)
       .catch(() => setRosterError(true))
   }, [])
+
+  const revealHidden = sessionStorage.getItem(REVEAL_HIDDEN_KEY) === '1'
+  const visibleRoster = (roster ?? []).filter((entry) => !entry.hidden || revealHidden)
 
   function pickCharacter(entry: RosterEntry) {
     setSelected(entry)
@@ -40,7 +48,7 @@ export default function Login() {
             <p>Who are you?</p>
             {rosterError && <p className="login-error">Couldn't load the roster — try refreshing.</p>}
             <div className="roster-grid">
-              {(roster ?? []).map((entry) => (
+              {visibleRoster.map((entry) => (
                 <button
                   key={entry.email}
                   type="button"

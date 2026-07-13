@@ -473,6 +473,13 @@ body,
   border-top: 1px solid var(--panel-border);
 }
 
+.settings-admin-row {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--panel-border);
+  text-align: center;
+}
+
 .settings-saved {
   margin: 0;
   color: #4ade80;

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { REVEAL_HIDDEN_KEY } from './Login'
 import type { Profile } from '../types'
 
 interface SettingsPanelProps {
@@ -54,6 +55,12 @@ export default function SettingsPanel({ currentUser, members, onClose }: Setting
       setConfirmPin('')
       setEmail('')
     }
+  }
+
+  async function revealTestAndSwitch() {
+    if (!supabase) return
+    sessionStorage.setItem(REVEAL_HIDDEN_KEY, '1')
+    await supabase.auth.signOut()
   }
 
   async function pickEmoji(next: string) {
@@ -145,6 +152,14 @@ export default function SettingsPanel({ currentUser, members, onClose }: Setting
             {status === 'saving' ? 'Saving…' : 'Save changes'}
           </button>
         </form>
+
+        {currentUser.isAdmin && (
+          <div className="settings-admin-row">
+            <button type="button" className="login-back" onClick={revealTestAndSwitch}>
+              Reveal Test on login screen & switch character
+            </button>
+          </div>
+        )}
       </aside>
     </div>
   )
