@@ -225,6 +225,11 @@ export default function MapView({
   const tripAnimsRef = useRef<Map<string, TripAnim>>(new Map())
   const prevVisible = useRef<Set<string>>(new Set())
   const rafIdRef = useRef<number | null>(null)
+  // Preserved across a theme-triggered map recreation so switching themes
+  // doesn't jump the camera back to the default view or replay the
+  // fit-to-bounds flight — it should just reskin in place.
+  const lastCameraRef = useRef<{ center: maplibregl.LngLatLike; zoom: number } | null>(null)
+  const skipNextFitBoundsRef = useRef(false)
   const [ready, setReady] = useState(false)
 
   // Keep latest values available to map event handlers without re-binding.
@@ -255,8 +260,8 @@ export default function MapView({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLES[theme],
-      center: [20, 28],
-      zoom: 1.7,
+      center: lastCameraRef.current?.center ?? [20, 28],
+      zoom: lastCameraRef.current?.zoom ?? 1.7,
       attributionControl: { compact: true },
     })
     mapRef.current = map
@@ -440,6 +445,8 @@ export default function MapView({
 
     return () => {
       if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current)
+      lastCameraRef.current = { center: map.getCenter(), zoom: map.getZoom() }
+      skipNextFitBoundsRef.current = true
       badgeMarkers.current.forEach((m) => m.remove())
       badgeMarkers.current.clear()
       mapRef.current = null
@@ -527,6 +534,15 @@ export default function MapView({
     for (const trip of trips) {
       const marker = badgeMarkers.current.get(trip.id)
       if (marker) marker.getElement().classList.toggle('hidden', !isVisible(trip))
+    }
+
+    // A theme switch recreates the map (see the mount effect above) and
+    // this effect re-runs once `ready` flips back true — but nothing about
+    // which trips/years are visible actually changed, so skip re-flying
+    // to the same bounds; the preserved camera position already shows it.
+    if (skipNextFitBoundsRef.current) {
+      skipNextFitBoundsRef.current = false
+      return
     }
 
     const visible = trips.filter(isVisible)
