@@ -1,7 +1,10 @@
--- One-time trip data corrections, discussed 2026-07-10. Run once in the
--- Supabase SQL editor. Not idempotent (the DELETE and the stop rebuilds
--- would duplicate/error if run twice) — same one-shot pattern as
--- seed_2025.sql.
+-- One-time trip data corrections, discussed 2026-07-10.
+--
+-- ALREADY APPLIED (2026-07-13) — run directly via the REST API using the
+-- Test admin account rather than pasted into the SQL editor, once that
+-- account was promoted to is_admin. Kept here as a record of what changed
+-- and why; do NOT re-run this file, it is not idempotent (the DELETEs and
+-- stop rebuilds would duplicate/error on a second run).
 
 -- 2025: give it a color that isn't so close to 2026's amber (#fbbf24).
 update trips set color = '#ef4444' where id = '2fa04399-a7a3-4d99-bc7e-6f663ccff54d'; -- Balkans Road Trip
