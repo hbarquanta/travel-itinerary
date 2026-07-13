@@ -4,6 +4,8 @@ import type { Profile } from '../types'
 
 interface SettingsPanelProps {
   currentUser: Profile
+  /** Everyone's current profile, so already-taken emoji can be shown as such. */
+  members: Profile[]
   onClose: () => void
 }
 
@@ -15,7 +17,7 @@ const EMOJI_OPTIONS = [
 
 /** Self-service PIN/email change + character emoji, tucked behind a
  *  settings icon — not the first thing a signed-in character sees. */
-export default function SettingsPanel({ currentUser, onClose }: SettingsPanelProps) {
+export default function SettingsPanel({ currentUser, members, onClose }: SettingsPanelProps) {
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [email, setEmail] = useState('')
@@ -23,6 +25,11 @@ export default function SettingsPanel({ currentUser, onClose }: SettingsPanelPro
   const [error, setError] = useState('')
   const [emoji, setEmoji] = useState(currentUser.emoji)
   const [emojiStatus, setEmojiStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [emojiError, setEmojiError] = useState('')
+
+  const takenBy = new Map(
+    members.filter((m) => m.id !== currentUser.id).map((m) => [m.emoji, m.displayName]),
+  )
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()
@@ -50,11 +57,22 @@ export default function SettingsPanel({ currentUser, onClose }: SettingsPanelPro
   }
 
   async function pickEmoji(next: string) {
-    if (!supabase || next === emoji) return
+    if (!supabase || next === emoji || takenBy.has(next)) return
+    const previous = emoji
     setEmoji(next)
     setEmojiStatus('saving')
+    setEmojiError('')
     const { error: updateError } = await supabase.from('profiles').update({ emoji: next }).eq('id', currentUser.id)
-    setEmojiStatus(updateError ? 'error' : 'saved')
+    if (updateError) {
+      setEmoji(previous)
+      setEmojiStatus('error')
+      // Postgres unique_violation — someone else grabbed it a moment ago.
+      setEmojiError(
+        updateError.code === '23505' ? 'Someone just took that one — pick another.' : "Couldn't save — try again.",
+      )
+    } else {
+      setEmojiStatus('saved')
+    }
   }
 
   return (
@@ -70,20 +88,25 @@ export default function SettingsPanel({ currentUser, onClose }: SettingsPanelPro
         <div className="admin-field">
           <span>Your character</span>
           <div className="emoji-grid">
-            {EMOJI_OPTIONS.map((e) => (
-              <button
-                key={e}
-                type="button"
-                className={`emoji-option${emoji === e ? ' selected' : ''}`}
-                onClick={() => pickEmoji(e)}
-                aria-label={`Use ${e}`}
-              >
-                {e}
-              </button>
-            ))}
+            {EMOJI_OPTIONS.map((e) => {
+              const takenName = takenBy.get(e)
+              return (
+                <button
+                  key={e}
+                  type="button"
+                  className={`emoji-option${emoji === e ? ' selected' : ''}${takenName ? ' taken' : ''}`}
+                  onClick={() => pickEmoji(e)}
+                  disabled={!!takenName}
+                  aria-label={takenName ? `${e} — taken by ${takenName}` : `Use ${e}`}
+                  title={takenName ? `Taken by ${takenName}` : undefined}
+                >
+                  {e}
+                </button>
+              )
+            })}
           </div>
           {emojiStatus === 'saved' && <p className="settings-saved">Saved ✓</p>}
-          {emojiStatus === 'error' && <p className="login-error">Couldn't save — try again.</p>}
+          {emojiStatus === 'error' && <p className="login-error">{emojiError}</p>}
         </div>
 
         <form onSubmit={handleSave} className="settings-form">

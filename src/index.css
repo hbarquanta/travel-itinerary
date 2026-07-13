@@ -39,7 +39,7 @@ body,
 
 .app {
   position: relative;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
   height: 100dvh;
 }
@@ -452,6 +452,16 @@ body,
 .emoji-option.selected {
   border-color: var(--accent-b);
   background: color-mix(in srgb, var(--accent-b) 22%, transparent);
+}
+
+.emoji-option.taken {
+  opacity: 0.3;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+.emoji-option.taken:hover {
+  transform: none;
 }
 
 .settings-form {
@@ -1535,6 +1545,10 @@ section.year-off {
     justify-content: flex-start;
     overflow-x: auto;
     scrollbar-width: none;
+    /* Fade the trailing edge so a row that overflows visibly hints
+       "more to scroll" instead of looking like a hard, final cutoff. */
+    mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
   }
 
   .year-chips::-webkit-scrollbar,

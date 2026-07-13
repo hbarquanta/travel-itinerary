@@ -327,7 +327,7 @@ function AtlasMap({
         )}
       </header>
       {settingsOpen && currentUser && (
-        <SettingsPanel currentUser={currentUser} onClose={() => setSettingsOpen(false)} />
+        <SettingsPanel currentUser={currentUser} members={members} onClose={() => setSettingsOpen(false)} />
       )}
       <div className="chips-wrap">
         <YearChips years={years} activeYears={activeYears} onToggle={toggleYear} />

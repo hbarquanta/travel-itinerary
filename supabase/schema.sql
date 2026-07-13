@@ -119,6 +119,42 @@ on conflict (id) do update set
   emoji = excluded.emoji,
   is_admin = excluded.is_admin;
 
+-- Every character's emoji must be unique — two people can't be the same
+-- animal. Enforced at the DB level so a race between two people picking
+-- the same emoji at once is still caught, not just the client-side check.
+-- (plain `add constraint` has no `if not exists` form, hence the do-block.)
+do $$ begin
+  alter table profiles add constraint profiles_emoji_unique unique (emoji);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table allowed_users add constraint allowed_users_emoji_unique unique (emoji);
+exception when duplicate_object then null; end $$;
+
+-- The reverse direction of the sync above: allowed_users seeds profiles on
+-- first login, but a self-service change to your own profile (e.g. picking
+-- a new emoji in Settings) only updates `profiles` — the pre-login
+-- character-picker roster (public_roster, sourced from allowed_users)
+-- would otherwise silently go stale. This mirrors any profile display-field
+-- change back down to its allowed_users row by email.
+create or replace function sync_profile_to_allowed_users()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update allowed_users
+  set display_name = new.display_name, color = new.color, emoji = new.emoji
+  where email = new.email;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_profile_updated on profiles;
+create trigger on_profile_updated
+  after update of display_name, color, emoji on profiles
+  for each row execute function sync_profile_to_allowed_users();
+
 -- ── Trips & stops ──────────────────────────────────────────────────────
 create table if not exists trips (
   id uuid primary key default gen_random_uuid(),
