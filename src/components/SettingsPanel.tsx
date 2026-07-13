@@ -1,18 +1,28 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import type { Profile } from '../types'
 
 interface SettingsPanelProps {
+  currentUser: Profile
   onClose: () => void
 }
 
-/** Self-service PIN/email change, tucked behind a settings icon — not the
- *  first thing a signed-in character sees. */
-export default function SettingsPanel({ onClose }: SettingsPanelProps) {
+const EMOJI_OPTIONS = [
+  '🦊', '🐙', '🦋', '🐝', '🦅', '🧪', '🐺', '🦉', '🐢', '🦁',
+  '🐯', '🐼', '🦄', '🐸', '🦖', '🐳', '🦑', '🦩', '🦔', '🐨',
+  '🐧', '🦆', '🦜', '🐬',
+]
+
+/** Self-service PIN/email change + character emoji, tucked behind a
+ *  settings icon — not the first thing a signed-in character sees. */
+export default function SettingsPanel({ currentUser, onClose }: SettingsPanelProps) {
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [error, setError] = useState('')
+  const [emoji, setEmoji] = useState(currentUser.emoji)
+  const [emojiStatus, setEmojiStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()
@@ -39,6 +49,14 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
     }
   }
 
+  async function pickEmoji(next: string) {
+    if (!supabase || next === emoji) return
+    setEmoji(next)
+    setEmojiStatus('saving')
+    const { error: updateError } = await supabase.from('profiles').update({ emoji: next }).eq('id', currentUser.id)
+    setEmojiStatus(updateError ? 'error' : 'saved')
+  }
+
   return (
     <div className="settings-overlay" onClick={onClose}>
       <aside className="settings-panel glass" onClick={(e) => e.stopPropagation()}>
@@ -48,6 +66,26 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
             ✕
           </button>
         </header>
+
+        <div className="admin-field">
+          <span>Your character</span>
+          <div className="emoji-grid">
+            {EMOJI_OPTIONS.map((e) => (
+              <button
+                key={e}
+                type="button"
+                className={`emoji-option${emoji === e ? ' selected' : ''}`}
+                onClick={() => pickEmoji(e)}
+                aria-label={`Use ${e}`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+          {emojiStatus === 'saved' && <p className="settings-saved">Saved ✓</p>}
+          {emojiStatus === 'error' && <p className="login-error">Couldn't save — try again.</p>}
+        </div>
+
         <form onSubmit={handleSave} className="settings-form">
           <label className="admin-field">
             <span>New PIN</span>

@@ -41,6 +41,7 @@ export function useTripsData(ready: boolean) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'approvals' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ideas' }, reload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trip_participants' }, reload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, reload)
       .subscribe()
     return () => {
       db.removeChannel(channel)

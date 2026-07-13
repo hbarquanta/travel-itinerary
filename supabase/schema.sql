@@ -305,6 +305,9 @@ create policy trip_participants_write_admin on trip_participants for all
 
 -- ── Realtime ─────────────────────────────────────────────────────────────
 do $$ begin
+  alter publication supabase_realtime add table profiles;
+exception when duplicate_object then null; end $$;
+do $$ begin
   alter publication supabase_realtime add table trips;
 exception when duplicate_object then null; end $$;
 do $$ begin
