@@ -74,10 +74,12 @@ export function flightPath(a: LngLat, b: LngLat, steps = 64): LngLat[] {
 }
 
 /**
- * Per-leg route segments for a trip: a great-circle curve for ground travel,
- * or a bowed flight curve when the destination stop's `travelMode` is
- * 'flight'. Longitudes are unwrapped across the whole sequence so segments
- * never jump across the antimeridian.
+ * Per-leg route segments for a trip: a real road route when precomputed
+ * (`to.routeGeometry` — see supabase/schema.sql and the routing backfill
+ * script), a great-circle curve as the ground-travel fallback, or a bowed
+ * flight curve when the destination stop's `travelMode` is 'flight'.
+ * Longitudes are unwrapped across the whole sequence so segments never
+ * jump across the antimeridian.
  */
 export function tripRouteSegments(stops: Stop[], stepsPerLeg = 48): RouteSegment[] {
   const ordered = [...stops].sort((x, y) => x.orderIndex - y.orderIndex)
@@ -88,7 +90,15 @@ export function tripRouteSegments(stops: Stop[], stepsPerLeg = 48): RouteSegment
     const a: LngLat = [from.lng, from.lat]
     const b: LngLat = [to.lng, to.lat]
     const mode: 'flight' | 'ground' = to.travelMode === 'flight' ? 'flight' : 'ground'
-    segments.push({ mode, coords: mode === 'flight' ? flightPath(a, b) : greatCircleArc(a, b, stepsPerLeg) })
+    let coords: LngLat[]
+    if (mode === 'flight') {
+      coords = flightPath(a, b)
+    } else if (to.routeGeometry && to.routeGeometry.length > 1) {
+      coords = to.routeGeometry
+    } else {
+      coords = greatCircleArc(a, b, stepsPerLeg)
+    }
+    segments.push({ mode, coords })
   }
 
   // Unwrap longitudes across the whole trip so segments joined end-to-end

@@ -269,7 +269,16 @@ function AtlasMap({
         }}
         onDragEditStop={(localId, lat, lng) => {
           setEditSession((s) =>
-            s ? { ...s, stops: s.stops.map((st) => (st.localId === localId ? { ...st, lat, lng } : st)) } : s,
+            s
+              ? {
+                  ...s,
+                  // Dragging moves this stop, so its old incoming route
+                  // (computed for the previous position) no longer applies.
+                  stops: s.stops.map((st) =>
+                    st.localId === localId ? { ...st, lat, lng, routeGeometry: null } : st,
+                  ),
+                }
+              : s,
           )
           setDirty(true)
         }}

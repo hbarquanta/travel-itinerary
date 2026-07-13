@@ -32,6 +32,7 @@ interface StopRow {
   arrive: string | null
   depart: string | null
   travel_mode: 'ground' | 'flight'
+  route_geometry: [number, number][] | null
 }
 
 interface ProfileRow {
@@ -72,6 +73,7 @@ const toStop = (row: StopRow): Stop => ({
   arrive: row.arrive,
   depart: row.depart,
   travelMode: row.travel_mode,
+  routeGeometry: row.route_geometry,
 })
 
 const toProfile = (row: ProfileRow): Profile => ({
@@ -93,7 +95,7 @@ export async function fetchTrips(): Promise<Trip[]> {
 
   const { data: stopRows, error: stopErr } = await db
     .from('stops')
-    .select('id, trip_id, name, lat, lng, order_index, notes, wiki_url, arrive, depart, travel_mode')
+    .select('id, trip_id, name, lat, lng, order_index, notes, wiki_url, arrive, depart, travel_mode, route_geometry')
     .order('order_index', { ascending: true })
   if (stopErr) throw stopErr
 
@@ -329,6 +331,7 @@ export interface StopInput {
   notes: string | null
   wikiUrl: string | null
   travelMode: 'ground' | 'flight'
+  routeGeometry?: [number, number][] | null
 }
 
 export async function createStop(input: StopInput): Promise<string> {
@@ -344,6 +347,7 @@ export async function createStop(input: StopInput): Promise<string> {
       notes: input.notes,
       wiki_url: input.wikiUrl,
       travel_mode: input.travelMode,
+      route_geometry: input.routeGeometry ?? null,
     })
     .select('id')
     .single()
@@ -363,6 +367,7 @@ export async function updateStop(id: string, input: Omit<StopInput, 'tripId'>) {
       notes: input.notes,
       wiki_url: input.wikiUrl,
       travel_mode: input.travelMode,
+      route_geometry: input.routeGeometry ?? null,
     })
     .eq('id', id)
   if (error) throw error

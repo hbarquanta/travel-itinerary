@@ -155,8 +155,15 @@ create table if not exists stops (
   wiki_url text,
   arrive date,
   depart date,
-  travel_mode travel_mode not null default 'ground'
+  travel_mode travel_mode not null default 'ground',
+  -- Precomputed [lng,lat] path from the *previous* stop to this one, for
+  -- ground legs that should follow real roads instead of a straight line
+  -- (see src/lib/geo.ts). Null falls back to the straight/great-circle
+  -- line — e.g. sea crossings, which have no road route.
+  route_geometry jsonb
 );
+
+alter table stops add column if not exists route_geometry jsonb;
 
 create index if not exists stops_trip_id_idx on stops (trip_id);
 

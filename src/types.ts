@@ -27,6 +27,9 @@ export interface Stop {
   depart?: string | null
   /** How you arrive here from the previous stop; defaults to 'ground'. */
   travelMode?: 'flight' | 'ground'
+  /** Precomputed [lng,lat] road route from the previous stop to this one;
+   *  null/absent falls back to a straight/great-circle line. */
+  routeGeometry?: [number, number][] | null
 }
 
 export interface Trip {
