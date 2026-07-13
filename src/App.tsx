@@ -156,7 +156,7 @@ function AtlasMap({
   const [whoamiOpen, setWhoamiOpen] = useState(false)
   const [savedToast, setSavedToast] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>(
-    () => (localStorage.getItem('atlas-theme') as 'dark' | 'light' | null) ?? 'dark',
+    () => (localStorage.getItem('atlas-theme') as 'dark' | 'light' | null) ?? 'light',
   )
 
   useEffect(() => {

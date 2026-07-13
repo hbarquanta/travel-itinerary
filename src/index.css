@@ -1,45 +1,79 @@
 /* ── Atlas design system ─────────────────────────────────────────────
-   Dark, cinematic, glassmorphism. One accent gradient, glowing routes. */
+   Pastel minimalism, vintage-travel-journal palette: warm clay accent,
+   sage/sky secondaries, parchment-cream ground. Every component rule
+   below reads its color from these tokens — never a literal hex/rgba —
+   so retheming, or adding a third theme later, means editing this block
+   and nothing else. Light is the default (bare :root); dark is an
+   explicit override, not a naive invert — see the comment on the dark
+   block for why. */
 
 :root {
-  --bg: #0b0e14;
-  --panel: rgba(16, 20, 30, 0.62);
-  --panel-border: rgba(255, 255, 255, 0.09);
-  --text: #e7eaf2;
-  --text-dim: #8b93a7;
-  --accent-a: #f59e0b;
-  --accent-b: #dc2626;
-  --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
-  --radius: 16px;
-  --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-  /* R,G,B channels (no rgba() wrapper) for the many small "lighten the
-     surface a touch" tints sprinkled through this file — swapping this one
-     value in light mode flips them all from a white wash to a black one,
-     without hand-editing every rule. */
-  --surface-tint: 255, 255, 255;
-  --font:
-    ui-rounded, -apple-system, 'SF Pro Rounded', 'Segoe UI', Roboto,
-    'Helvetica Neue', sans-serif;
+  --cream: #f6f1e7;
+  --sand: rgba(255, 255, 255, 0.72);
+  --sand-line: rgba(56, 51, 44, 0.12);
+  --ink: #38332c;
+  --ink-dim: #7a7166;
+  --accent: #c97a57;
+  /* R,G,B channels (no rgba() wrapper) so glow/wash effects elsewhere in
+     this file can do rgba(var(--accent-rgb), alpha) and stay in sync with
+     --accent automatically. */
+  --accent-rgb: 201, 122, 87;
+  --accent-2: #7e9683;
+  --radius: 14px;
+  --shadow: 0 12px 32px rgba(56, 51, 44, 0.1);
+  /* Same R,G,B-channel trick as --accent-rgb, for the many small "lighten
+     (or darken) the surface a touch" tints sprinkled through this file —
+     swapping this one value flips them all between a light and a dark
+     wash without hand-editing every rule. */
+  --surface-tint: 56, 51, 44;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  /* Used sparingly — the wordmark, trip titles, panel headings — never
+     body text or anything meant to be scanned quickly. */
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
 
-  color-scheme: dark;
+  color-scheme: light;
   font-family: var(--font);
-  color: var(--text);
+  color: var(--ink);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Light mode — same structure, inverted surfaces. Toggled via a
-   data-theme attribute on <html> (see the Settings panel), not a media
-   query, since it's a manual in-app preference, not an OS setting. */
+/* Dark isn't light-with-inverted-lightness: a warm-brown dark ground put
+   the clay accent in the same hue family as its background and made the
+   whole thing look muddy. Dark instead sits on a cool slate, which gives
+   the warm accent something to actually contrast against — same idea as
+   a warm reading lamp in a dark room rather than a dim brown one.
+   Toggled via a data-theme attribute on <html> (see the Settings panel),
+   not a media query, since it's a manual in-app preference. */
+:root[data-theme='dark'] {
+  --cream: #1d2126;
+  --sand: rgba(38, 43, 49, 0.82);
+  --sand-line: rgba(255, 255, 255, 0.08);
+  --ink: #eceff2;
+  --ink-dim: #8b95a1;
+  --accent: #e2916c;
+  --accent-rgb: 226, 145, 108;
+  --accent-2: #8fac97;
+  --shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  --surface-tint: 255, 255, 255;
+  color-scheme: dark;
+}
+
+/* Explicit re-assertion of the default light values — see the note on
+   the fundamentals of this pattern: the toggle stamps data-theme in both
+   directions, so light needs its own rule too, not just "absence of dark". */
 :root[data-theme='light'] {
-  --bg: #eef1f6;
-  --panel: rgba(255, 255, 255, 0.72);
-  --panel-border: rgba(15, 23, 42, 0.1);
-  --text: #1b2130;
-  --text-dim: #5b6478;
-  --shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
-  --surface-tint: 15, 23, 42;
+  --cream: #f6f1e7;
+  --sand: rgba(255, 255, 255, 0.72);
+  --sand-line: rgba(56, 51, 44, 0.12);
+  --ink: #38332c;
+  --ink-dim: #7a7166;
+  --accent: #c97a57;
+  --accent-rgb: 201, 122, 87;
+  --accent-2: #7e9683;
+  --shadow: 0 12px 32px rgba(56, 51, 44, 0.1);
+  --surface-tint: 56, 51, 44;
   color-scheme: light;
 }
 
@@ -52,7 +86,7 @@ body,
 #root {
   margin: 0;
   height: 100%;
-  background: var(--bg);
+  background: var(--cream);
   overflow: hidden;
 }
 
@@ -82,10 +116,10 @@ body,
 }
 
 .glass {
-  background: var(--panel);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  border: 1px solid var(--panel-border);
+  background: var(--sand);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--sand-line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
@@ -102,8 +136,8 @@ body,
   gap: 14px;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at center, rgba(245, 158, 11, 0.14), transparent 60%),
-    var(--bg);
+    radial-gradient(ellipse at center, rgba(var(--accent-rgb), 0.14), transparent 60%),
+    var(--cream);
   transition: opacity 0.6s ease, visibility 0.6s ease;
 }
 
@@ -134,7 +168,7 @@ body,
 .loading-globe {
   font-size: 48px;
   animation: drift 3.2s ease-in-out infinite;
-  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.55));
+  filter: drop-shadow(0 0 20px rgba(var(--accent-rgb), 0.55));
 }
 
 @keyframes drift {
@@ -147,7 +181,7 @@ body,
   font-size: 12.5px;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   z-index: 1;
 }
 
@@ -170,7 +204,7 @@ body,
 
 .empty-state span {
   font-size: 12.5px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 /* ── Login / not-allowlisted screens ── */
@@ -182,8 +216,8 @@ body,
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse at center, rgba(245, 158, 11, 0.14), transparent 60%),
-    var(--bg);
+    radial-gradient(ellipse at center, rgba(var(--accent-rgb), 0.14), transparent 60%),
+    var(--cream);
 }
 
 .login-card {
@@ -199,25 +233,23 @@ body,
 .login-card .brand-mark {
   font-size: 34px;
   margin-bottom: 6px;
-  filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.55));
+  filter: drop-shadow(0 0 14px rgba(var(--accent-rgb), 0.55));
 }
 
 .login-card h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 21px;
+  font-weight: 600;
   letter-spacing: 2px;
   text-transform: uppercase;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-family: var(--font-serif);
+  color: var(--accent);
 }
 
 .login-card p {
   margin: 4px 0 16px;
   font-size: 13px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   line-height: 1.5;
 }
 
@@ -232,22 +264,26 @@ body,
   width: 100%;
   padding: 11px 14px;
   border-radius: 10px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   background: rgba(var(--surface-tint), 0.04);
-  color: var(--text);
+  color: var(--ink);
   font: 14px var(--font);
 }
 
 .login-card input:focus {
   outline: none;
-  border-color: var(--accent-b);
+  border-color: var(--accent);
 }
 
-.login-card button {
+/* Scoped to the PIN form specifically (not just any button in the card) —
+   the roster grid's per-character buttons live outside this form, and a
+   bare `.login-card button` selector was accidentally winning against
+   `.roster-btn` on specificity, flattening every character to one color. */
+.login-card form button {
   padding: 11px 14px;
   border: none;
   border-radius: 10px;
-  background: var(--accent-gradient);
+  background: var(--accent);
   color: #fff;
   font: 700 13px var(--font);
   letter-spacing: 0.5px;
@@ -255,11 +291,11 @@ body,
   transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
 }
 
-.login-card button:hover:not(:disabled) {
+.login-card form button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
-.login-card button:disabled {
+.login-card form button:disabled {
   opacity: 0.7;
   cursor: default;
 }
@@ -285,9 +321,9 @@ body,
   gap: 6px;
   padding: 14px 6px;
   border-radius: 12px;
-  border: 1.5px solid color-mix(in srgb, var(--avatar-color) 45%, var(--panel-border));
+  border: 1.5px solid color-mix(in srgb, var(--avatar-color) 45%, var(--sand-line));
   background: color-mix(in srgb, var(--avatar-color) 10%, transparent);
-  color: var(--text);
+  color: var(--ink);
   font: 600 12px var(--font);
   cursor: pointer;
   transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s;
@@ -308,7 +344,7 @@ body,
 
 .login-back {
   background: none !important;
-  color: var(--text-dim) !important;
+  color: var(--ink-dim) !important;
   font-weight: 500 !important;
   padding: 4px !important;
 }
@@ -327,26 +363,24 @@ body,
 
 .brand-mark {
   font-size: 26px;
-  filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.6));
+  filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.6));
 }
 
 .brand h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 3px;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
   text-transform: uppercase;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  font-family: var(--font-serif);
+  color: var(--accent);
 }
 
 .brand p {
   margin: 0;
   font-size: 11px;
   letter-spacing: 0.6px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 .whoami-wrap {
@@ -356,17 +390,17 @@ body,
 
 .whoami {
   padding: 6px 12px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   border-radius: 999px;
   background: rgba(var(--surface-tint), 0.04);
-  color: var(--text);
+  color: var(--ink);
   font: 600 12px var(--font);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .whoami:hover {
-  border-color: var(--accent-b);
+  border-color: var(--accent);
 }
 
 .dropdown-backdrop {
@@ -391,16 +425,16 @@ body,
 
 .whoami-menu-label {
   font-size: 12.5px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   white-space: nowrap;
 }
 
 .whoami-signout {
   padding: 8px 14px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   border-radius: 8px;
   background: rgba(var(--surface-tint), 0.04);
-  color: var(--text);
+  color: var(--ink);
   font: 600 12.5px var(--font);
   cursor: pointer;
 }
@@ -416,7 +450,7 @@ body,
   height: 30px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   border-radius: 50%;
   background: rgba(var(--surface-tint), 0.04);
   font-size: 14px;
@@ -425,7 +459,7 @@ body,
 }
 
 .settings-gear:hover {
-  border-color: var(--accent-b);
+  border-color: var(--accent);
 }
 
 .settings-overlay {
@@ -452,26 +486,26 @@ body,
   justify-content: space-between;
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   background: rgba(var(--surface-tint), 0.04);
-  color: var(--text);
+  color: var(--ink);
   font: 600 13px var(--font);
   cursor: pointer;
 }
 
 .theme-toggle:hover {
-  border-color: var(--accent-b);
+  border-color: var(--accent);
 }
 
 .theme-toggle-hint {
   font: 500 11px var(--font);
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 .settings-section {
   margin-bottom: 18px;
   padding-bottom: 18px;
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 1px solid var(--sand-line);
 }
 
 .emoji-grid {
@@ -499,8 +533,8 @@ body,
 }
 
 .emoji-option.selected {
-  border-color: var(--accent-b);
-  background: color-mix(in srgb, var(--accent-b) 22%, transparent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .emoji-option.taken {
@@ -519,13 +553,13 @@ body,
   gap: 12px;
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--panel-border);
+  border-top: 1px solid var(--sand-line);
 }
 
 .settings-admin-row {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid var(--panel-border);
+  border-top: 1px solid var(--sand-line);
   text-align: center;
 }
 
@@ -587,6 +621,13 @@ body,
   font-size: 12px;
 }
 
+/* Sage instead of clay — visually separates "which category" from "which
+   year" at a glance, even though both are the same chip component. */
+.category-chips .chip.active {
+  background: var(--accent-2);
+  box-shadow: 0 4px 14px rgba(var(--accent-rgb), 0.25);
+}
+
 .year-chips {
   display: flex;
   flex-wrap: wrap;
@@ -594,10 +635,10 @@ body,
   max-width: min(640px, 86vw);
   gap: 8px;
   padding: 6px;
-  background: var(--panel);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  border: 1px solid var(--panel-border);
+  background: var(--sand);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--sand-line);
   border-radius: 999px;
   box-shadow: var(--shadow);
 }
@@ -606,7 +647,7 @@ body,
   appearance: none;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   font: 600 14px/1 var(--font);
   letter-spacing: 0.8px;
   padding: 9px 18px;
@@ -620,14 +661,14 @@ body,
 }
 
 .chip:hover {
-  color: var(--text);
+  color: var(--ink);
   transform: translateY(-1px);
 }
 
 .chip.active {
   color: #fff;
-  background: var(--accent-gradient);
-  box-shadow: 0 4px 18px rgba(220, 38, 38, 0.45);
+  background: var(--accent);
+  box-shadow: 0 4px 18px rgba(var(--accent-rgb), 0.45);
 }
 
 .chip.active:active,
@@ -664,19 +705,19 @@ body,
   z-index: 21;
   width: 30px;
   height: 44px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   border-radius: 10px;
-  background: var(--panel);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  color: var(--text-dim);
+  background: var(--sand);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--ink-dim);
   font-size: 18px;
   cursor: pointer;
   transition: right 0.35s cubic-bezier(0.32, 0.72, 0, 1), color 0.2s;
 }
 
 .sidebar-toggle:hover {
-  color: var(--text);
+  color: var(--ink);
 }
 
 .sidebar-toggle:not(.open) {
@@ -685,7 +726,7 @@ body,
 
 .sidebar-header {
   padding: 18px 20px 12px;
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 1px solid var(--sand-line);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -697,7 +738,7 @@ body,
   padding: 7px 12px;
   border-radius: 999px;
   border: none;
-  background: var(--accent-gradient);
+  background: var(--accent);
   color: #fff;
   font: 700 11.5px var(--font);
   cursor: pointer;
@@ -710,15 +751,16 @@ body,
 
 .sidebar-header h2 {
   margin: 0;
-  font-size: 17px;
-  font-weight: 800;
-  letter-spacing: 1.6px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
   text-transform: uppercase;
+  font-family: var(--font-serif);
 }
 
 .sidebar-sub {
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 .sidebar-scroll {
@@ -733,7 +775,7 @@ body,
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 2.5px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 section.year-off {
@@ -748,7 +790,7 @@ section.year-off {
 .trip-card {
   --trip-color: #fff;
   position: relative;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   border-left: 3px solid var(--trip-color);
   border-radius: 12px;
   background: rgba(var(--surface-tint), 0.03);
@@ -812,8 +854,9 @@ section.year-off {
 
 .trip-title {
   margin: 0;
-  font-size: 14.5px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-serif);
   flex: 1;
   min-width: 0;
   white-space: nowrap;
@@ -825,8 +868,8 @@ section.year-off {
   flex: none;
   font-size: 10.5px;
   font-weight: 600;
-  color: var(--text-dim);
-  border: 1px solid var(--panel-border);
+  color: var(--ink-dim);
+  border: 1px solid var(--sand-line);
   border-radius: 999px;
   padding: 3px 8px;
   white-space: nowrap;
@@ -838,7 +881,7 @@ section.year-off {
   gap: 6px;
   margin-top: 6px;
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 .meta-sep {
@@ -853,7 +896,7 @@ section.year-off {
   margin: 7px 0 0;
   font-size: 12px;
   line-height: 1.45;
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 /* ── Participants row (who was actually on the trip) ── */
@@ -956,7 +999,7 @@ section.year-off {
 .idea-card {
   position: relative;
   border-radius: 12px;
-  border: 1px dashed color-mix(in srgb, var(--avatar-color) 45%, var(--panel-border));
+  border: 1px dashed color-mix(in srgb, var(--avatar-color) 45%, var(--sand-line));
   background: rgba(var(--surface-tint), 0.02);
   padding: 12px 14px;
   margin-bottom: 10px;
@@ -976,13 +1019,13 @@ section.year-off {
 
 .idea-author {
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 .idea-delete {
   border: none;
   background: none;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
@@ -1004,7 +1047,7 @@ section.year-off {
 .idea-promote {
   border: none;
   background: none;
-  color: var(--accent-b);
+  color: var(--accent);
   font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
@@ -1013,7 +1056,7 @@ section.year-off {
 }
 
 .idea-promote:hover {
-  background: color-mix(in srgb, var(--accent-b) 15%, transparent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 /* ── Admin: edit button on trip cards ── */
@@ -1044,11 +1087,11 @@ section.year-off {
   gap: 7px;
   padding: 10px 16px;
   border-radius: 999px;
-  border: 1px solid var(--panel-border);
-  background: var(--panel);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  color: var(--text);
+  border: 1px solid var(--sand-line);
+  background: var(--sand);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--ink);
   font: 700 13px var(--font);
   cursor: pointer;
   box-shadow: var(--shadow);
@@ -1060,7 +1103,7 @@ section.year-off {
 }
 
 .add-idea-toggle.active {
-  background: var(--accent-gradient);
+  background: var(--accent);
   color: #fff;
   border-color: transparent;
 }
@@ -1115,9 +1158,9 @@ section.year-off {
   width: 100%;
   padding: 9px 12px;
   border-radius: 9px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   background: rgba(var(--surface-tint), 0.04);
-  color: var(--text);
+  color: var(--ink);
   font: 13px var(--font);
   resize: none;
   box-sizing: border-box;
@@ -1126,7 +1169,7 @@ section.year-off {
 .add-idea-form input:focus,
 .add-idea-form textarea:focus {
   outline: none;
-  border-color: var(--accent-b);
+  border-color: var(--accent);
 }
 
 .add-idea-actions {
@@ -1145,13 +1188,13 @@ section.year-off {
 }
 
 .add-idea-save {
-  background: var(--accent-gradient);
+  background: var(--accent);
   color: #fff;
 }
 
 .add-idea-cancel {
   background: rgba(var(--surface-tint), 0.06);
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 /* ── Admin trip panel ── */
@@ -1171,21 +1214,22 @@ section.year-off {
   align-items: center;
   justify-content: space-between;
   padding: 16px 18px 12px;
-  border-bottom: 1px solid var(--panel-border);
+  border-bottom: 1px solid var(--sand-line);
 }
 
 .admin-panel-header h2 {
   margin: 0;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  font-family: var(--font-serif);
+  text-transform: none;
 }
 
 .admin-panel-close {
   border: none;
   background: none;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   font-size: 14px;
   cursor: pointer;
   padding: 4px 6px;
@@ -1194,7 +1238,7 @@ section.year-off {
 
 .admin-panel-close:hover {
   background: rgba(var(--surface-tint), 0.08);
-  color: var(--text);
+  color: var(--ink);
 }
 
 .admin-panel-scroll {
@@ -1216,7 +1260,7 @@ section.year-off {
 .admin-field > span {
   font-size: 11px;
   font-weight: 700;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   text-transform: uppercase;
   letter-spacing: 0.6px;
 }
@@ -1227,9 +1271,9 @@ section.year-off {
   width: 100%;
   padding: 8px 11px;
   border-radius: 8px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   background: rgba(var(--surface-tint), 0.04);
-  color: var(--text);
+  color: var(--ink);
   font: 13px var(--font);
   box-sizing: border-box;
   resize: none;
@@ -1239,7 +1283,7 @@ section.year-off {
 .admin-field select:focus,
 .admin-field textarea:focus {
   outline: none;
-  border-color: var(--accent-b);
+  border-color: var(--accent);
 }
 
 .admin-field-row {
@@ -1252,7 +1296,7 @@ section.year-off {
   align-items: center;
   gap: 8px;
   font-size: 12.5px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   cursor: pointer;
 }
 
@@ -1288,18 +1332,18 @@ section.year-off {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 .admin-empty-hint {
   margin: 0;
   font-size: 12px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   font-style: italic;
 }
 
 .admin-stop-row {
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   border-radius: 10px;
   padding: 8px 10px;
   display: flex;
@@ -1330,22 +1374,22 @@ section.year-off {
   min-width: 0;
   padding: 6px 9px;
   border-radius: 7px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   background: rgba(var(--surface-tint), 0.04);
-  color: var(--text);
+  color: var(--ink);
   font: 12.5px var(--font);
 }
 
 .admin-stop-name:focus {
   outline: none;
-  border-color: var(--accent-b);
+  border-color: var(--accent);
 }
 
 .admin-stop-top button {
   flex: none;
   border: none;
   background: rgba(var(--surface-tint), 0.06);
-  color: var(--text-dim);
+  color: var(--ink-dim);
   font-size: 11px;
   width: 22px;
   height: 22px;
@@ -1355,7 +1399,7 @@ section.year-off {
 
 .admin-stop-top button:hover:not(:disabled) {
   background: rgba(var(--surface-tint), 0.14);
-  color: var(--text);
+  color: var(--ink);
 }
 
 .admin-stop-top button:disabled {
@@ -1376,17 +1420,17 @@ section.year-off {
   width: 100%;
   padding: 5px 9px;
   border-radius: 7px;
-  border: 1px solid var(--panel-border);
+  border: 1px solid var(--sand-line);
   background: rgba(var(--surface-tint), 0.02);
-  color: var(--text-dim);
+  color: var(--ink-dim);
   font: 11.5px var(--font);
   box-sizing: border-box;
 }
 
 .admin-stop-detail:focus {
   outline: none;
-  border-color: var(--accent-b);
-  color: var(--text);
+  border-color: var(--accent);
+  color: var(--ink);
 }
 
 .admin-panel-actions {
@@ -1394,7 +1438,7 @@ section.year-off {
   align-items: center;
   gap: 8px;
   padding: 14px 18px;
-  border-top: 1px solid var(--panel-border);
+  border-top: 1px solid var(--sand-line);
 }
 
 .admin-panel-actions .add-idea-cancel,
@@ -1428,7 +1472,7 @@ section.year-off {
 
 .admin-confirm-text {
   font-size: 11.5px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
   margin-right: auto;
 }
 
@@ -1448,8 +1492,8 @@ section.year-off {
   height: 20px;
   border-radius: 50%;
   border: 2px solid #fff;
-  background: var(--accent-b);
-  box-shadow: 0 0 12px rgba(220, 38, 38, 0.7);
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.7);
   cursor: grab;
 }
 
@@ -1487,13 +1531,13 @@ section.year-off {
 
 /* ── Map popups ── */
 .maplibregl-popup-content {
-  background: var(--panel) !important;
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  border: 1px solid var(--panel-border);
+  background: var(--sand) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--sand-line);
   border-radius: 12px !important;
   box-shadow: var(--shadow) !important;
-  color: var(--text);
+  color: var(--ink);
   padding: 12px 14px !important;
 }
 
@@ -1512,7 +1556,7 @@ section.year-off {
 .stop-popup-dates {
   margin-top: 3px;
   font-size: 11.5px;
-  color: var(--text-dim);
+  color: var(--ink-dim);
 }
 
 .stop-popup-notes {
@@ -1526,7 +1570,7 @@ section.year-off {
   margin-top: 7px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--accent-b);
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -1540,7 +1584,7 @@ section.year-off {
 }
 
 .maplibregl-ctrl-attrib a {
-  color: var(--text-dim) !important;
+  color: var(--ink-dim) !important;
 }
 
 /* ── Mobile: sidebar becomes a bottom sheet ── */
