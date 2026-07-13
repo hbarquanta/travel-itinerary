@@ -147,13 +147,18 @@ interface RosterRow {
   color: string
   emoji: string
   hidden: boolean
+  sort_order: number
 }
 
 /** Pre-login character roster for the picker screen — no session required.
- *  Already ordered (admin first, then alphabetical) by the view itself. */
+ *  Ordered explicitly by sort_order (not left to the view's own internal
+ *  ORDER BY, which isn't reliably preserved once queried from outside it). */
 export async function fetchRoster(): Promise<RosterEntry[]> {
   const db = client()
-  const { data, error } = await db.from('public_roster').select('email, display_name, color, emoji, hidden')
+  const { data, error } = await db
+    .from('public_roster')
+    .select('email, display_name, color, emoji, hidden, sort_order')
+    .order('sort_order', { ascending: true })
   if (error) throw error
   return ((data ?? []) as RosterRow[]).map((row) => ({
     email: row.email,

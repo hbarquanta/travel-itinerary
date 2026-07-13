@@ -35,24 +35,32 @@ create table if not exists allowed_users (
   -- still a real, working login, just not shown to everyone. Revealed only
   -- via the admin-only toggle in Settings (see sync_profile_to_allowed_users
   -- doesn't touch this; it's set directly, not through a profile field).
-  hidden boolean not null default false
+  hidden boolean not null default false,
+  -- Explicit picker ordering. Not derived from is_admin at query time —
+  -- that column is deliberately never exposed pre-login (see public_roster
+  -- below), and a view's own internal ORDER BY isn't reliably preserved
+  -- once queried from outside it, so both the view *and* the client
+  -- fetch (fetchRoster in queries.ts) order by this column explicitly.
+  sort_order int not null default 1
 );
 
 alter table allowed_users add column if not exists hidden boolean not null default false;
+alter table allowed_users add column if not exists sort_order int not null default 1;
 
-insert into allowed_users (email, display_name, color, emoji, is_admin, hidden) values
-  ('fabian.joebstl@gmail.com',   'Fabian',  '#f97316', '🦊', true,  false),
-  ('dominik@atlas.internal',     'Dominik', '#8b5cf6', '🐙', false, false),
-  ('florian@atlas.internal',     'Florian', '#22d3ee', '🦋', false, false),
-  ('mateo@atlas.internal',       'Mateo',   '#a3e635', '🦅', false, false),
-  ('michael@atlas.internal',     'Michael', '#f43f5e', '🐝', false, false),
-  ('test@atlas.internal',        'Test',    '#94a3b8', '🧪', false, true)
+insert into allowed_users (email, display_name, color, emoji, is_admin, hidden, sort_order) values
+  ('fabian.joebstl@gmail.com',   'Fabian',  '#f97316', '🦊', true,  false, 0),
+  ('dominik@atlas.internal',     'Dominik', '#8b5cf6', '🐙', false, false, 1),
+  ('florian@atlas.internal',     'Florian', '#22d3ee', '🦋', false, false, 2),
+  ('mateo@atlas.internal',       'Mateo',   '#a3e635', '🦅', false, false, 3),
+  ('michael@atlas.internal',     'Michael', '#f43f5e', '🐝', false, false, 4),
+  ('test@atlas.internal',        'Test',    '#94a3b8', '🧪', false, true,  5)
 on conflict (email) do update set
   display_name = excluded.display_name,
   color = excluded.color,
   emoji = excluded.emoji,
   is_admin = excluded.is_admin,
-  hidden = excluded.hidden;
+  hidden = excluded.hidden,
+  sort_order = excluded.sort_order;
 
 -- Drop any old placeholder/removed rows left over from earlier seed data —
 -- the insert above only updates rows matching one of today's emails, it
@@ -71,8 +79,8 @@ where email not in (
 -- Ordered explicitly (not left to physical row order, which drifts every
 -- time a row is updated) so the picker's layout is always the same.
 create or replace view public_roster as
-  select email, display_name, color, emoji, hidden from allowed_users
-  order by is_admin desc, display_name asc;
+  select email, display_name, color, emoji, hidden, sort_order from allowed_users
+  order by sort_order asc;
 grant select on public_roster to anon, authenticated;
 
 -- Not readable by the client (no policies below) — only the security-definer
