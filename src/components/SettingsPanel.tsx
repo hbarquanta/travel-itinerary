@@ -7,6 +7,8 @@ interface SettingsPanelProps {
   currentUser: Profile
   /** Everyone's current profile, so already-taken emoji can be shown as such. */
   members: Profile[]
+  theme: 'dark' | 'light'
+  onToggleTheme: () => void
   onClose: () => void
 }
 
@@ -25,7 +27,7 @@ const EMOJI_OPTIONS = [
  *  Supabase's email-confirmation limbo or succeeds and silently strands
  *  the picker on the old address — either way you get locked out with a
  *  correct password. Learned this one live; not re-adding it. */
-export default function SettingsPanel({ currentUser, members, onClose }: SettingsPanelProps) {
+export default function SettingsPanel({ currentUser, members, theme, onToggleTheme, onClose }: SettingsPanelProps) {
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -92,6 +94,14 @@ export default function SettingsPanel({ currentUser, members, onClose }: Setting
             ✕
           </button>
         </header>
+
+        <div className="admin-field">
+          <span>Appearance</span>
+          <button type="button" className="theme-toggle" onClick={onToggleTheme}>
+            {theme === 'dark' ? '🌙 Dark mode' : '☀️ Light mode'}
+            <span className="theme-toggle-hint">tap to switch</span>
+          </button>
+        </div>
 
         <div className="admin-field">
           <span>Your character</span>

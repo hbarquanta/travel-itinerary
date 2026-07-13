@@ -155,6 +155,16 @@ function AtlasMap({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [whoamiOpen, setWhoamiOpen] = useState(false)
   const [savedToast, setSavedToast] = useState(false)
+  const [theme, setTheme] = useState<'dark' | 'light'>(
+    () => (localStorage.getItem('atlas-theme') as 'dark' | 'light' | null) ?? 'dark',
+  )
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('atlas-theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
 
   const toggleYear = (year: string) =>
     setActiveYears((prev) => {
@@ -233,6 +243,7 @@ function AtlasMap({
     <div className="app">
       <MapView
         trips={trips}
+        theme={theme}
         activeYears={activeYears}
         activeCategories={activeCategories}
         hoveredTripId={hoveredTripId}
@@ -327,7 +338,13 @@ function AtlasMap({
         )}
       </header>
       {settingsOpen && currentUser && (
-        <SettingsPanel currentUser={currentUser} members={members} onClose={() => setSettingsOpen(false)} />
+        <SettingsPanel
+          currentUser={currentUser}
+          members={members}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
       <div className="chips-wrap">
         <YearChips years={years} activeYears={activeYears} onToggle={toggleYear} />

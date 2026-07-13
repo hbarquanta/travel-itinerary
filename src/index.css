@@ -12,6 +12,11 @@
   --accent-gradient: linear-gradient(135deg, var(--accent-a), var(--accent-b));
   --radius: 16px;
   --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  /* R,G,B channels (no rgba() wrapper) for the many small "lighten the
+     surface a touch" tints sprinkled through this file — swapping this one
+     value in light mode flips them all from a white wash to a black one,
+     without hand-editing every rule. */
+  --surface-tint: 255, 255, 255;
   --font:
     ui-rounded, -apple-system, 'SF Pro Rounded', 'Segoe UI', Roboto,
     'Helvetica Neue', sans-serif;
@@ -22,6 +27,20 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Light mode — same structure, inverted surfaces. Toggled via a
+   data-theme attribute on <html> (see the Settings panel), not a media
+   query, since it's a manual in-app preference, not an OS setting. */
+:root[data-theme='light'] {
+  --bg: #eef1f6;
+  --panel: rgba(255, 255, 255, 0.72);
+  --panel-border: rgba(15, 23, 42, 0.1);
+  --text: #1b2130;
+  --text-dim: #5b6478;
+  --shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --surface-tint: 15, 23, 42;
+  color-scheme: light;
 }
 
 * {
@@ -99,8 +118,8 @@ body,
   position: absolute;
   inset: -50%;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    linear-gradient(rgba(var(--surface-tint), 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--surface-tint), 0.035) 1px, transparent 1px);
   background-size: 42px 42px;
   animation: grid-drift 22s linear infinite;
   mask-image: radial-gradient(circle at center, black, transparent 70%);
@@ -214,7 +233,7 @@ body,
   padding: 11px 14px;
   border-radius: 10px;
   border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--surface-tint), 0.04);
   color: var(--text);
   font: 14px var(--font);
 }
@@ -339,7 +358,7 @@ body,
   padding: 6px 12px;
   border: 1px solid var(--panel-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--surface-tint), 0.04);
   color: var(--text);
   font: 600 12px var(--font);
   cursor: pointer;
@@ -380,7 +399,7 @@ body,
   padding: 8px 14px;
   border: 1px solid var(--panel-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--surface-tint), 0.04);
   color: var(--text);
   font: 600 12.5px var(--font);
   cursor: pointer;
@@ -399,7 +418,7 @@ body,
   place-items: center;
   border: 1px solid var(--panel-border);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--surface-tint), 0.04);
   font-size: 14px;
   cursor: pointer;
   flex-shrink: 0;
@@ -425,6 +444,30 @@ body,
   padding: 20px;
 }
 
+.theme-toggle {
+  margin-top: 6px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-border);
+  background: rgba(var(--surface-tint), 0.04);
+  color: var(--text);
+  font: 600 13px var(--font);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent-b);
+}
+
+.theme-toggle-hint {
+  font: 500 11px var(--font);
+  color: var(--text-dim);
+}
+
 .emoji-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -440,7 +483,7 @@ body,
   font-size: 18px;
   border-radius: 9px;
   border: 1.5px solid transparent;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--surface-tint), 0.04);
   cursor: pointer;
   transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s;
 }
@@ -676,7 +719,7 @@ body,
   overflow-y: auto;
   padding: 12px 14px 18px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: rgba(var(--surface-tint), 0.15) transparent;
 }
 
 .year-heading {
@@ -702,7 +745,7 @@ section.year-off {
   border: 1px solid var(--panel-border);
   border-left: 3px solid var(--trip-color);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--surface-tint), 0.03);
   padding: 12px 14px;
   margin-bottom: 10px;
   cursor: pointer;
@@ -715,7 +758,7 @@ section.year-off {
 
 .trip-card:hover,
 .trip-card.hovered {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--surface-tint), 0.06);
   transform: translateX(-2px);
   box-shadow: 0 0 22px color-mix(in srgb, var(--trip-color) 28%, transparent);
 }
@@ -908,7 +951,7 @@ section.year-off {
   position: relative;
   border-radius: 12px;
   border: 1px dashed color-mix(in srgb, var(--avatar-color) 45%, var(--panel-border));
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--surface-tint), 0.02);
   padding: 12px 14px;
   margin-bottom: 10px;
 }
@@ -981,7 +1024,7 @@ section.year-off {
 
 .trip-card-edit:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--surface-tint), 0.08);
 }
 
 /* ── Add-idea mode ── */
@@ -1021,6 +1064,8 @@ section.year-off {
   height: 18px;
   border-radius: 50%;
   border: 2px dashed #fff;
+  /* Floats over the map tiles, not the UI chrome, so it stays literal
+     white regardless of theme — not tied to --surface-tint. */
   background: rgba(255, 255, 255, 0.15);
   box-shadow: 0 0 14px rgba(255, 255, 255, 0.6);
   animation: ghost-pulse 1.4s ease-in-out infinite;
@@ -1065,7 +1110,7 @@ section.year-off {
   padding: 9px 12px;
   border-radius: 9px;
   border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--surface-tint), 0.04);
   color: var(--text);
   font: 13px var(--font);
   resize: none;
@@ -1099,7 +1144,7 @@ section.year-off {
 }
 
 .add-idea-cancel {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--surface-tint), 0.06);
   color: var(--text-dim);
 }
 
@@ -1142,7 +1187,7 @@ section.year-off {
 }
 
 .admin-panel-close:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--surface-tint), 0.08);
   color: var(--text);
 }
 
@@ -1177,7 +1222,7 @@ section.year-off {
   padding: 8px 11px;
   border-radius: 8px;
   border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--surface-tint), 0.04);
   color: var(--text);
   font: 13px var(--font);
   box-sizing: border-box;
@@ -1269,7 +1314,7 @@ section.year-off {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--surface-tint), 0.08);
   font-size: 10.5px;
   font-weight: 700;
 }
@@ -1280,7 +1325,7 @@ section.year-off {
   padding: 6px 9px;
   border-radius: 7px;
   border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(var(--surface-tint), 0.04);
   color: var(--text);
   font: 12.5px var(--font);
 }
@@ -1293,7 +1338,7 @@ section.year-off {
 .admin-stop-top button {
   flex: none;
   border: none;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(var(--surface-tint), 0.06);
   color: var(--text-dim);
   font-size: 11px;
   width: 22px;
@@ -1303,7 +1348,7 @@ section.year-off {
 }
 
 .admin-stop-top button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(var(--surface-tint), 0.14);
   color: var(--text);
 }
 
@@ -1326,7 +1371,7 @@ section.year-off {
   padding: 5px 9px;
   border-radius: 7px;
   border: 1px solid var(--panel-border);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--surface-tint), 0.02);
   color: var(--text-dim);
   font: 11.5px var(--font);
   box-sizing: border-box;

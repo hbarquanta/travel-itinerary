@@ -7,11 +7,15 @@ import { yearGroupOf } from '../types'
 import { tripRouteSegments, concatSegments, topmostPoint, sliceCoordinates, coordsLengthKm, type LngLat } from '../lib/geo'
 import type { EditStop } from '../lib/editSession'
 
-const MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark'
+const MAP_STYLES = {
+  dark: 'https://tiles.openfreemap.org/styles/dark',
+  light: 'https://tiles.openfreemap.org/styles/positron',
+} as const
 const DRAW_IN_MS = 4000
 
 interface MapViewProps {
   trips: Trip[]
+  theme: 'dark' | 'light'
   activeYears: Set<string>
   activeCategories: Set<string>
   hoveredTripId: string | null
@@ -195,6 +199,7 @@ const DASH_STEPS: number[][] = [
 
 export default function MapView({
   trips,
+  theme,
   activeYears,
   activeCategories,
   hoveredTripId,
@@ -219,6 +224,7 @@ export default function MapView({
   const segmentsRef = useRef<SegmentMeta[]>([])
   const tripAnimsRef = useRef<Map<string, TripAnim>>(new Map())
   const prevVisible = useRef<Set<string>>(new Set())
+  const rafIdRef = useRef<number | null>(null)
   const [ready, setReady] = useState(false)
 
   // Keep latest values available to map event handlers without re-binding.
@@ -237,14 +243,18 @@ export default function MapView({
   const tripsRef = useRef(trips)
   tripsRef.current = trips
 
-  // Create the map once: empty sources, layers, listeners, and the rAF loop.
-  // Actual trip data is populated by the effect below, which re-runs
-  // whenever `trips` changes (not just on mount).
+  // Create the map once per theme: empty sources, layers, listeners, and
+  // the rAF loop. Actual trip data is populated by the effect below, which
+  // re-runs whenever `trips` changes (not just on mount). Switching the
+  // base style isn't a simple in-place swap — our own sources/layers
+  // belong to the old style and don't carry over — so a theme change just
+  // tears down and recreates the whole map via this effect's dependency
+  // on `theme`, same cleanup path as unmounting.
   useEffect(() => {
     if (!containerRef.current) return
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE,
+      style: MAP_STYLES[theme],
       center: [20, 28],
       zoom: 1.7,
       attributionControl: { compact: true },
@@ -377,7 +387,12 @@ export default function MapView({
       let lastTs = 0
       let pulsePhase = 0
       const animate = (ts: number) => {
-        if (!mapRef.current) return
+        // Guards against this exact map instance's closure, not just "is
+        // some map mounted" — otherwise, when the map is recreated (e.g. a
+        // theme switch), this stale loop keeps calling methods on the
+        // already-removed old map since mapRef.current is truthy again
+        // (pointing at the new one) by the time this next tick runs.
+        if (mapRef.current !== map) return
         const dt = lastTs ? ts - lastTs : 16
         lastTs = ts
 
@@ -416,14 +431,15 @@ export default function MapView({
           stopsSrc?.setData(buildStopsData(tripsRef.current, tripAnimsRef.current))
         }
 
-        requestAnimationFrame(animate)
+        rafIdRef.current = requestAnimationFrame(animate)
       }
-      requestAnimationFrame(animate)
+      rafIdRef.current = requestAnimationFrame(animate)
 
       setReady(true)
     })
 
     return () => {
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current)
       badgeMarkers.current.forEach((m) => m.remove())
       badgeMarkers.current.clear()
       mapRef.current = null
@@ -431,7 +447,7 @@ export default function MapView({
       map.remove()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [theme])
 
   // Rebuild segments/anims/sources/badges whenever the trips list changes —
   // not just on mount — so a newly created or edited trip actually shows up
