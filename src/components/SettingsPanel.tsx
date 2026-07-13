@@ -16,12 +16,18 @@ const EMOJI_OPTIONS = [
   '🐧', '🦆', '🦜', '🐬',
 ]
 
-/** Self-service PIN/email change + character emoji, tucked behind a
- *  settings icon — not the first thing a signed-in character sees. */
+/** Self-service PIN change + character emoji, tucked behind a settings
+ *  icon — not the first thing a signed-in character sees.
+ *
+ *  Deliberately no email-change field: your account's email is the fixed
+ *  join key this whole system matches by (profiles, the allowed_users
+ *  sync trigger, the character picker itself). Changing it either sits in
+ *  Supabase's email-confirmation limbo or succeeds and silently strands
+ *  the picker on the old address — either way you get locked out with a
+ *  correct password. Learned this one live; not re-adding it. */
 export default function SettingsPanel({ currentUser, members, onClose }: SettingsPanelProps) {
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
-  const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [error, setError] = useState('')
   const [emoji, setEmoji] = useState(currentUser.emoji)
@@ -34,18 +40,14 @@ export default function SettingsPanel({ currentUser, members, onClose }: Setting
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()
-    if (!supabase) return
-    if (!pin && !email) return
-    if (pin && pin !== confirmPin) {
+    if (!supabase || !pin) return
+    if (pin !== confirmPin) {
       setError("PINs don't match")
       return
     }
     setStatus('saving')
     setError('')
-    const updates: { password?: string; email?: string } = {}
-    if (pin) updates.password = pin
-    if (email) updates.email = email
-    const { error: updateError } = await supabase.auth.updateUser(updates)
+    const { error: updateError } = await supabase.auth.updateUser({ password: pin })
     if (updateError) {
       setStatus('error')
       setError(updateError.message)
@@ -53,7 +55,6 @@ export default function SettingsPanel({ currentUser, members, onClose }: Setting
       setStatus('saved')
       setPin('')
       setConfirmPin('')
-      setEmail('')
     }
   }
 
@@ -137,19 +138,10 @@ export default function SettingsPanel({ currentUser, members, onClose }: Setting
               onChange={(e) => setConfirmPin(e.target.value)}
             />
           </label>
-          <label className="admin-field">
-            <span>Email</span>
-            <input
-              type="email"
-              placeholder="Leave blank to keep current email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
           {error && <p className="login-error">{error}</p>}
           {status === 'saved' && <p className="settings-saved">Saved ✓</p>}
-          <button type="submit" className="add-idea-save" disabled={status === 'saving' || (!pin && !email)}>
-            {status === 'saving' ? 'Saving…' : 'Save changes'}
+          <button type="submit" className="add-idea-save" disabled={status === 'saving' || !pin}>
+            {status === 'saving' ? 'Saving…' : 'Save PIN'}
           </button>
         </form>
 
