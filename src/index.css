@@ -468,6 +468,12 @@ body,
   color: var(--text-dim);
 }
 
+.settings-section {
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
 .emoji-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);

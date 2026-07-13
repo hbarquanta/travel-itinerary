@@ -300,6 +300,16 @@ function AtlasMap({
           <h1>Atlas</h1>
         </div>
         {currentUser && (
+          <button
+            type="button"
+            className="settings-gear"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? '🌙' : '☀️'}
+          </button>
+        )}
+        {currentUser && (
           <button type="button" className="settings-gear" title="Settings" onClick={() => setSettingsOpen(true)}>
             ⚙️
           </button>

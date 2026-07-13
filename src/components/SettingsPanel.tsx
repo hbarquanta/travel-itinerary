@@ -95,7 +95,7 @@ export default function SettingsPanel({ currentUser, members, theme, onToggleThe
           </button>
         </header>
 
-        <div className="admin-field">
+        <div className="admin-field settings-section">
           <span>Appearance</span>
           <button type="button" className="theme-toggle" onClick={onToggleTheme}>
             {theme === 'dark' ? '🌙 Dark mode' : '☀️ Light mode'}
