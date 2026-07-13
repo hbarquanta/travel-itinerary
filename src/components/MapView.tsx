@@ -473,6 +473,31 @@ export default function MapView({
     const map = mapRef.current
     if (!map || !ready) return
     const isVisible = (t: Trip) => activeYears.has(yearGroupOf(t)) && activeCategories.has(t.category)
+
+    // Reset newly-visible trips' draw-in ratio AND immediately re-render the
+    // sources with that reset applied, before the filter reveals them. Doing
+    // this the other way round (filter first, reset next) let the filter
+    // expose last time's fully-drawn (revealed) data for one still-stale
+    // frame — a visible flash of every stop before the reset caught up on
+    // the next animation tick.
+    const visibleIds = new Set(trips.filter(isVisible).map((t) => t.id))
+    let resetAny = false
+    for (const [tripId, anim] of tripAnimsRef.current) {
+      if (visibleIds.has(tripId) && !prevVisible.current.has(tripId)) {
+        anim.ratio = 0
+        resetAny = true
+      }
+    }
+    prevVisible.current = visibleIds
+    if (resetAny) {
+      const routesSrc = map.getSource('routes') as maplibregl.GeoJSONSource | undefined
+      const flightsSrc = map.getSource('flights') as maplibregl.GeoJSONSource | undefined
+      const stopsSrc = map.getSource('stops') as maplibregl.GeoJSONSource | undefined
+      routesSrc?.setData(segmentsFeatureCollection(segmentsRef.current, 'ground', tripAnimsRef.current))
+      flightsSrc?.setData(segmentsFeatureCollection(segmentsRef.current, 'flight', tripAnimsRef.current))
+      stopsSrc?.setData(buildStopsData(trips, tripAnimsRef.current))
+    }
+
     const groups = [...activeYears]
     const categories = [...activeCategories]
     const filter: maplibregl.FilterSpecification = [
@@ -487,12 +512,6 @@ export default function MapView({
       const marker = badgeMarkers.current.get(trip.id)
       if (marker) marker.getElement().classList.toggle('hidden', !isVisible(trip))
     }
-
-    const visibleIds = new Set(trips.filter(isVisible).map((t) => t.id))
-    for (const [tripId, anim] of tripAnimsRef.current) {
-      if (visibleIds.has(tripId) && !prevVisible.current.has(tripId)) anim.ratio = 0
-    }
-    prevVisible.current = visibleIds
 
     const visible = trips.filter(isVisible)
     if (visible.length === 0) return
