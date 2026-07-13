@@ -1,12 +1,22 @@
 #!/usr/bin/env node
 // Fetches real road routes (via OSRM's free public routing API) for every
-// `car`-mode leg that doesn't already have one, and stores the resulting
-// path on the destination stop's `route_geometry` column (see
-// supabase/schema.sql). `train`/`ferry`/`flight` legs are left alone —
-// OSRM only does road routing, so applying it to a train or ferry leg
-// would just be a confidently-wrong road detour; those keep falling back
-// to the smooth curve instead. Safe to re-run — it only fills in `car`
-// legs that are still missing a route.
+// `car`/`train`-mode leg that doesn't already have one, and stores the
+// resulting path on the destination stop's `route_geometry` column (see
+// supabase/schema.sql). `train` legs use this as a *shape proxy* — rail
+// corridors mostly follow the same valleys/passes as roads, so it beats a
+// straight line — but a specific well-documented train route (e.g. a
+// named express with known stations) should be hand-overridden with a
+// more accurate polyline rather than relying on this generic pass.
+// `ferry`/`flight` legs are left alone (no road exists to route across).
+//
+// Uses `overview=simplified` (not `full`) — full returns one point per
+// underlying road-network node, which for a long route is tens of
+// thousands of points and visibly lags the draw-in animation; simplified
+// keeps the real shape at a much lower, render-appropriate point count.
+//
+// Safe to re-run — by default it only fills in legs still missing a
+// route. Pass FORCE=1 to re-fetch and overwrite legs that already have one
+// (e.g. after this simplification fix, to replace the old full-detail data).
 //
 // Requires an admin account. Reads credentials from env vars so nothing
 // sensitive is hardcoded here:
@@ -15,6 +25,7 @@
 //
 // Usage:
 //   ADMIN_EMAIL=test@atlas.internal ADMIN_PASSWORD=<pin> node scripts/backfill-route-geometry.mjs
+//   ADMIN_EMAIL=... ADMIN_PASSWORD=... FORCE=1 node scripts/backfill-route-geometry.mjs
 
 import { readFileSync } from 'node:fs'
 
@@ -35,6 +46,7 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL
 const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD
+const FORCE = process.env.FORCE === '1'
 
 if (!SUPABASE_URL || !ANON_KEY || !ADMIN_EMAIL || !ADMIN_PASSWORD) {
   console.error('Missing SUPABASE_URL/ANON_KEY (from .env.local) or ADMIN_EMAIL/ADMIN_PASSWORD (env vars).')
@@ -68,13 +80,13 @@ async function main() {
     for (let i = 0; i < tripStops.length - 1; i++) {
       const from = tripStops[i]
       const to = tripStops[i + 1]
-      if (to.travel_mode !== 'car') continue
-      if (to.route_geometry && to.route_geometry.length > 1) {
+      if (to.travel_mode !== 'car' && to.travel_mode !== 'train') continue
+      if (!FORCE && to.route_geometry && to.route_geometry.length > 1) {
         alreadyDone++
         continue
       }
 
-      const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`
+      const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=simplified&geometries=geojson`
       const res = await fetch(url).then((r) => r.json())
       const coords = res?.routes?.[0]?.geometry?.coordinates
       if (!coords || coords.length < 2) {
