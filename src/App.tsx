@@ -416,11 +416,11 @@ function AtlasMap({
         >
           {addIdeaMode ? (
             <>
-              <CloseIcon size={15} /> Cancel
+              <CloseIcon size={15} /> <span className="add-idea-label">Cancel</span>
             </>
           ) : (
             <>
-              <AddIdeaIcon size={15} /> Add idea
+              <AddIdeaIcon size={15} /> <span className="add-idea-label">Add idea</span>
             </>
           )}
         </button>

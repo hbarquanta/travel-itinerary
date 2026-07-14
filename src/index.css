@@ -1899,4 +1899,34 @@ section.year-off {
     transform: rotate(90deg);
     transition: color 0.2s;
   }
+
+  /* The header row and the sidebar-toggle both live in the top-right band
+     now (the header grew a Chat button since this was first written), so
+     add-idea-toggle — previously also top:18/right:18, same band — was
+     overlapping both. Parked below the sidebar-toggle instead of tuning
+     pixel-perfect widths, so the next header addition can't reopen this. */
+  .add-idea-toggle {
+    top: 124px;
+    right: 14px;
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+  }
+
+  .add-idea-label {
+    display: none;
+  }
+
+  /* Anchored to the viewport rather than purely to the whoami button —
+     the button itself sits at the tail end of an already-tight header, so
+     a menu anchored `right: 0` to *it* could open a few px from clipping
+     depending on exactly how much the header has grown. */
+  .whoami-menu {
+    position: fixed;
+    top: 66px;
+    right: 10px;
+    width: min(220px, calc(100vw - 20px));
+    min-width: 0;
+  }
 }
