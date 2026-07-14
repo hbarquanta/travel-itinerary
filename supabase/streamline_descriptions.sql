@@ -32,17 +32,17 @@ delete from stops where trip_id = (select id from trips where title in ('Oman', 
 insert into stops (trip_id, name, lat, lng, order_index, notes, travel_mode)
 select id, s.name, s.lat, s.lng, s.order_index, s.notes, s.travel_mode::travel_mode
 from trips, (values
-  ('Vienna',        48.2082, 16.3738,  0, 'Home base.',                              'ground'),
+  ('Vienna',        48.2082, 16.3738,  0, 'Home base.',                              'car'),
   ('Muscat',        23.5859, 58.4059,  1, 'Fly in from Vienna.',                     'flight'),
-  ('Nizwa',         22.9333, 57.5333,  2, null,                                      'ground'),
-  ('Jebel Akhdar',  23.0667, 57.6667,  3, null,                                      'ground'),
-  ('Wahiba Sands',  22.0833, 58.5000,  4, null,                                      'ground'),
-  ('Salalah',       17.0151, 54.0924,  5, null,                                      'ground'),
-  ('Abu Dhabi',     24.4539, 54.3773,  6, 'Long drive back north, via Al Ain.',      'ground'),
-  ('Dubai',         25.2048, 55.2708,  7, null,                                      'ground'),
-  ('Riyadh',        24.7136, 46.6753,  8, 'Land crossing into Saudi at Al-Ghuwaifat.', 'ground'),
-  ('AlUla',         26.6097, 37.9153,  9, null,                                      'ground'),
-  ('Jeddah',        21.4858, 39.1925, 10, null,                                      'ground'),
+  ('Nizwa',         22.9333, 57.5333,  2, null,                                      'car'),
+  ('Jebel Akhdar',  23.0667, 57.6667,  3, null,                                      'car'),
+  ('Wahiba Sands',  22.0833, 58.5000,  4, null,                                      'car'),
+  ('Salalah',       17.0151, 54.0924,  5, null,                                      'car'),
+  ('Abu Dhabi',     24.4539, 54.3773,  6, 'Long drive back north, via Al Ain.',      'car'),
+  ('Dubai',         25.2048, 55.2708,  7, null,                                      'car'),
+  ('Riyadh',        24.7136, 46.6753,  8, 'Land crossing into Saudi at Al-Ghuwaifat.', 'car'),
+  ('AlUla',         26.6097, 37.9153,  9, null,                                      'car'),
+  ('Jeddah',        21.4858, 39.1925, 10, null,                                      'car'),
   ('Vienna',        48.2082, 16.3738, 11, 'Fly home from Jeddah.',                   'flight')
 ) as s(name, lat, lng, order_index, notes, travel_mode)
 where trips.title in ('Oman', 'Arabia');
@@ -52,14 +52,14 @@ delete from stops where trip_id = (select id from trips where title in ('Baku & 
 insert into stops (trip_id, name, lat, lng, order_index, notes, travel_mode)
 select id, s.name, s.lat, s.lng, s.order_index, s.notes, s.travel_mode::travel_mode
 from trips, (values
-  ('Vienna',  48.2082, 16.3738, 0, 'Home base.',              'ground'),
+  ('Vienna',  48.2082, 16.3738, 0, 'Home base.',              'car'),
   ('Tbilisi', 41.7151, 44.8271, 1, 'Fly in from Vienna.',     'flight'),
-  ('Baku',    40.4093, 49.8671, 2, 'Night train from Tbilisi.','ground'),
-  ('Kashan',  33.9850, 51.4100, 3, null,                      'ground'),
-  ('Isfahan', 32.6546, 51.6680, 4, null,                      'ground'),
-  ('Yazd',    31.8974, 54.3569, 5, null,                      'ground'),
-  ('Shiraz',  29.5918, 52.5837, 6, null,                      'ground'),
-  ('Tehran',  35.6892, 51.3890, 7, null,                      'ground'),
+  ('Baku',    40.4093, 49.8671, 2, 'Night train from Tbilisi.','train'),
+  ('Kashan',  33.9850, 51.4100, 3, null,                      'car'),
+  ('Isfahan', 32.6546, 51.6680, 4, null,                      'car'),
+  ('Yazd',    31.8974, 54.3569, 5, null,                      'car'),
+  ('Shiraz',  29.5918, 52.5837, 6, null,                      'car'),
+  ('Tehran',  35.6892, 51.3890, 7, null,                      'car'),
   ('Vienna',  48.2082, 16.3738, 8, 'Fly home from Tehran.',   'flight')
 ) as s(name, lat, lng, order_index, notes, travel_mode)
 where trips.title in ('Baku & Tehran', 'Persia');

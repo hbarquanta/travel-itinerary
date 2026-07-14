@@ -31,7 +31,7 @@ interface StopRow {
   wiki_url: string | null
   arrive: string | null
   depart: string | null
-  travel_mode: 'ground' | 'flight'
+  travel_mode: 'car' | 'flight'
   route_geometry: [number, number][] | null
 }
 
@@ -392,7 +392,7 @@ export interface StopInput {
   orderIndex: number
   notes: string | null
   wikiUrl: string | null
-  travelMode: 'ground' | 'flight'
+  travelMode: 'car' | 'flight'
   routeGeometry?: [number, number][] | null
 }
 

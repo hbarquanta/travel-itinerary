@@ -25,8 +25,8 @@ export interface Stop {
   wikiUrl?: string | null
   arrive?: string | null
   depart?: string | null
-  /** How you arrive here from the previous stop; defaults to 'ground'. */
-  travelMode?: 'flight' | 'ground'
+  /** How you arrive here from the previous stop; defaults to 'car'. */
+  travelMode?: 'flight' | 'car'
   /** Precomputed [lng,lat] road route from the previous stop to this one;
    *  null/absent falls back to a straight/great-circle line. */
   routeGeometry?: [number, number][] | null

@@ -15,7 +15,7 @@ export interface EditStop {
   lng: number
   notes: string
   wikiUrl: string
-  travelMode: 'ground' | 'flight'
+  travelMode: 'car' | 'flight'
   /** Precomputed incoming road route; cleared when the stop is dragged to a
    *  new position since the old path no longer starts/ends in the right place. */
   routeGeometry?: [number, number][] | null
@@ -104,7 +104,7 @@ export function editSessionFromTrip(trip: Trip, participantIds: string[]): EditS
         lng: s.lng,
         notes: s.notes ?? '',
         wikiUrl: s.wikiUrl ?? '',
-        travelMode: s.travelMode ?? 'ground',
+        travelMode: s.travelMode ?? 'car',
         routeGeometry: s.routeGeometry ?? null,
       })),
     deletedStopIds: [],
@@ -139,7 +139,7 @@ export function editSessionFromIdea(
         lng: idea.lng,
         notes: '',
         wikiUrl: '',
-        travelMode: 'ground',
+        travelMode: 'car',
       },
     ],
     deletedStopIds: [],

@@ -14,8 +14,22 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type travel_mode as enum ('ground', 'flight');
+  create type travel_mode as enum ('car', 'flight');
 exception when duplicate_object then null; end $$;
+
+-- Grew from car(as ground)/flight to car/train/ferry/flight (distinct map
+-- animations per mode) — migrated directly against the database at some
+-- point and never written back into this file, so it silently drifted out
+-- of sync with reality until a stop-data script hit "invalid input value
+-- for enum travel_mode: ground" against the live database. Kept here so a
+-- fresh install ends up in the same shape, and so this file can't drift
+-- again. `rename value` has no `if exists` form, hence the exception
+-- guard; `add value if not exists` already is idempotent on its own.
+do $$ begin
+  alter type travel_mode rename value 'ground' to 'car';
+exception when others then null; end $$;
+alter type travel_mode add value if not exists 'train';
+alter type travel_mode add value if not exists 'ferry';
 
 do $$ begin
   create type trip_category as enum ('Friends', 'Solo', 'Family');
@@ -214,7 +228,7 @@ create table if not exists stops (
   wiki_url text,
   arrive date,
   depart date,
-  travel_mode travel_mode not null default 'ground',
+  travel_mode travel_mode not null default 'car',
   -- Precomputed [lng,lat] path from the *previous* stop to this one, for
   -- ground legs that should follow real roads instead of a straight line
   -- (see src/lib/geo.ts). Null falls back to the straight/great-circle

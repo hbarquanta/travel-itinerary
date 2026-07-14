@@ -182,9 +182,9 @@ export default function AdminTripPanel({
               <button
                 type="button"
                 className="admin-mode-toggle"
-                title="Toggle flight/ground arrival"
+                title="Toggle flight/car arrival"
                 onClick={() =>
-                  onUpdateStop(stop.localId, { travelMode: stop.travelMode === 'flight' ? 'ground' : 'flight' })
+                  onUpdateStop(stop.localId, { travelMode: stop.travelMode === 'flight' ? 'car' : 'flight' })
                 }
               >
                 {stop.travelMode === 'flight' ? '✈️' : '🚗'}

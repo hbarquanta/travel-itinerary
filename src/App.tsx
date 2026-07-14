@@ -298,7 +298,7 @@ function AtlasMap({
                       lng,
                       notes: '',
                       wikiUrl: '',
-                      travelMode: 'ground',
+                      travelMode: 'car',
                     },
                   ],
                 }
