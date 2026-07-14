@@ -143,13 +143,15 @@ on conflict (id) do update set
 -- Every character's emoji must be unique — two people can't be the same
 -- animal. Enforced at the DB level so a race between two people picking
 -- the same emoji at once is still caught, not just the client-side check.
--- (plain `add constraint` has no `if not exists` form, hence the do-block.)
+-- (plain `add constraint` has no `if not exists` form, hence the do-block.
+-- A unique constraint's backing index can raise either duplicate_object or
+-- duplicate_table on a re-run depending on Postgres version — catch both.)
 do $$ begin
   alter table profiles add constraint profiles_emoji_unique unique (emoji);
-exception when duplicate_object then null; end $$;
+exception when duplicate_object or duplicate_table then null; end $$;
 do $$ begin
   alter table allowed_users add constraint allowed_users_emoji_unique unique (emoji);
-exception when duplicate_object then null; end $$;
+exception when duplicate_object or duplicate_table then null; end $$;
 
 -- The reverse direction of the sync above: allowed_users seeds profiles on
 -- first login, but a self-service change to your own profile (e.g. picking
@@ -331,9 +333,12 @@ drop policy if exists ideas_modify_own on ideas;
 create policy ideas_modify_own on ideas for update
   using (created_by = auth.uid());
 
+-- Own creator can delete their own idea; admin can also clear out anyone's
+-- (needed both for outright removal and so promoting someone else's idea to
+-- a trip can clean up the source pin afterward — see saveEditSession).
 drop policy if exists ideas_delete_own on ideas;
 create policy ideas_delete_own on ideas for delete
-  using (created_by = auth.uid());
+  using (created_by = auth.uid() or is_admin_user(auth.uid()));
 
 -- approvals: everyone allowlisted can read; a user can only manage their own
 -- approval rows (tap your own avatar, not someone else's).

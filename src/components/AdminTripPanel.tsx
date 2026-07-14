@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { EditSession, EditStop } from '../lib/editSession'
 import type { TripStatus, TripCategory, Profile } from '../types'
 import { CATEGORIES } from './CategoryChips'
+import { CharacterIcon, CloseIcon } from './icons'
 
 const STATUS_OPTIONS: TripStatus[] = ['idea', 'planned', 'locked', 'past']
 const COLOR_PALETTE = ['#fbbf24', '#f472b6', '#2dd4bf', '#a78bfa', '#fb7185', '#38bdf8', '#34d399', '#c084fc', '#67e8f9', '#facc15']
@@ -38,7 +39,7 @@ export default function AdminTripPanel({
       <header className="admin-panel-header">
         <h2>{session.tripId ? 'Edit trip' : session.promotingIdeaId ? 'Promote idea' : 'New trip'}</h2>
         <button type="button" className="admin-panel-close" onClick={onCancel} aria-label="Close">
-          ✕
+          <CloseIcon size={16} />
         </button>
       </header>
 
@@ -108,7 +109,7 @@ export default function AdminTripPanel({
                     })
                   }
                 >
-                  {m.emoji}
+                  <CharacterIcon emoji={m.emoji} color={m.color} size={22} />
                 </button>
               )
             })}
@@ -200,7 +201,7 @@ export default function AdminTripPanel({
                 ▼
               </button>
               <button type="button" className="admin-stop-remove" onClick={() => onRemoveStop(stop.localId)} title="Remove">
-                ✕
+                <CloseIcon size={13} />
               </button>
             </div>
             <input

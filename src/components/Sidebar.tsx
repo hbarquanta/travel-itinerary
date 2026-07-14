@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { Trip, Profile, Approval, ApprovalKind, Idea, TripStatus } from '../types'
 import { yearGroupOf } from '../types'
+import { CharacterIcon, EditIcon, CheckIcon } from './icons'
 
 const STATUS_META: Record<TripStatus, { icon: string; label: string }> = {
   idea: { icon: '💡', label: 'Idea' },
@@ -145,7 +146,14 @@ export default function Sidebar({
                     {idea.note && <p className="trip-desc">{idea.note}</p>}
                     <div className="idea-footer">
                       <span className="idea-author">
-                        {author ? `${author.emoji} ${author.displayName}` : 'Someone'}
+                        {author ? (
+                          <>
+                            <CharacterIcon emoji={author.emoji} color={author.color} size={16} />
+                            {author.displayName}
+                          </>
+                        ) : (
+                          'Someone'
+                        )}
                       </span>
                       <span className="idea-actions">
                         {isAdmin && onPromoteIdea && (
@@ -153,7 +161,7 @@ export default function Sidebar({
                             Promote to trip
                           </button>
                         )}
-                        {own && onDeleteIdea && (
+                        {(own || isAdmin) && onDeleteIdea && (
                           <button type="button" className="idea-delete" onClick={() => onDeleteIdea(idea.id)}>
                             Remove
                           </button>
@@ -228,7 +236,7 @@ function TripCard({
               onEdit(trip)
             }}
           >
-            ✏️
+            <EditIcon size={14} />
           </button>
         )}
       </div>
@@ -243,7 +251,7 @@ function TripCard({
         <div className="participant-row" title="Who was actually on this trip">
           {participants.map((m) => (
             <span key={m.id} className="avatar participant" style={{ '--avatar-color': m.color } as React.CSSProperties}>
-              {m.emoji}
+              <CharacterIcon emoji={m.emoji} color={m.color} size={18} />
             </span>
           ))}
         </div>
@@ -266,8 +274,12 @@ function TripCard({
                 if (own && onToggleApproval) onToggleApproval(trip.id, 'trip')
               }}
             >
-              {m.emoji}
-              {datesApproved.has(m.id) && <i className="dates-tick">✓</i>}
+              <CharacterIcon emoji={m.emoji} color={m.color} size={22} />
+              {datesApproved.has(m.id) && (
+                <i className="dates-tick">
+                  <CheckIcon size={9} />
+                </i>
+              )}
             </button>
           )
         })}

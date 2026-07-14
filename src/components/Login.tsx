@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchRoster, type RosterEntry } from '../lib/queries'
+import { CharacterIcon, CompassIcon } from './icons'
 
 /** Set by an admin's "reveal hidden characters" button in Settings so the
  *  next time the picker renders (after signing out), hidden entries like
@@ -40,7 +41,7 @@ export default function Login() {
   return (
     <div className="login-screen">
       <div className="login-card glass">
-        <span className="brand-mark">🧭</span>
+        <CompassIcon size={34} className="brand-mark" />
         <h1>Atlas</h1>
 
         {!selected ? (
@@ -56,7 +57,7 @@ export default function Login() {
                   style={{ '--avatar-color': entry.color } as React.CSSProperties}
                   onClick={() => pickCharacter(entry)}
                 >
-                  <span className="roster-emoji">{entry.emoji}</span>
+                  <CharacterIcon emoji={entry.emoji} color={entry.color} size={38} />
                   <span className="roster-name">{entry.displayName}</span>
                 </button>
               ))}
@@ -64,8 +65,9 @@ export default function Login() {
           </>
         ) : (
           <>
-            <p>
-              Enter {selected.displayName}'s PIN <span className="roster-emoji">{selected.emoji}</span>
+            <p className="pin-prompt">
+              Enter {selected.displayName}'s PIN
+              <CharacterIcon emoji={selected.emoji} color={selected.color} size={22} />
             </p>
             <form onSubmit={handleSubmit}>
               <input

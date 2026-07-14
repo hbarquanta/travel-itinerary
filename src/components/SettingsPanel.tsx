@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { REVEAL_HIDDEN_KEY } from './Login'
 import type { Profile } from '../types'
+import { CharacterIcon, CHARACTER_ICON_COLORS, CloseIcon, SunIcon, MoonIcon, CheckIcon } from './icons'
 
 interface SettingsPanelProps {
   currentUser: Profile
@@ -91,14 +92,17 @@ export default function SettingsPanel({ currentUser, members, theme, onToggleThe
         <header className="admin-panel-header">
           <h2>Settings</h2>
           <button type="button" className="admin-panel-close" onClick={onClose} aria-label="Close">
-            ✕
+            <CloseIcon size={16} />
           </button>
         </header>
 
         <div className="admin-field settings-section">
           <span>Appearance</span>
           <button type="button" className="theme-toggle" onClick={onToggleTheme}>
-            {theme === 'dark' ? '🌙 Dark mode' : '☀️ Light mode'}
+            <span className="theme-toggle-label">
+              {theme === 'dark' ? <MoonIcon size={16} /> : <SunIcon size={16} />}
+              {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+            </span>
             <span className="theme-toggle-hint">tap to switch</span>
           </button>
         </div>
@@ -118,12 +122,16 @@ export default function SettingsPanel({ currentUser, members, theme, onToggleThe
                   aria-label={takenName ? `${e} — taken by ${takenName}` : `Use ${e}`}
                   title={takenName ? `Taken by ${takenName}` : undefined}
                 >
-                  {e}
+                  <CharacterIcon emoji={e} color={CHARACTER_ICON_COLORS[e]} size={26} />
                 </button>
               )
             })}
           </div>
-          {emojiStatus === 'saved' && <p className="settings-saved">Saved ✓</p>}
+          {emojiStatus === 'saved' && (
+            <p className="settings-saved">
+              Saved <CheckIcon size={13} />
+            </p>
+          )}
           {emojiStatus === 'error' && <p className="login-error">{emojiError}</p>}
         </div>
 
@@ -149,7 +157,11 @@ export default function SettingsPanel({ currentUser, members, theme, onToggleThe
             />
           </label>
           {error && <p className="login-error">{error}</p>}
-          {status === 'saved' && <p className="settings-saved">Saved ✓</p>}
+          {status === 'saved' && (
+            <p className="settings-saved">
+              Saved <CheckIcon size={13} />
+            </p>
+          )}
           <button type="submit" className="add-idea-save" disabled={status === 'saving' || !pin}>
             {status === 'saving' ? 'Saving…' : 'Save PIN'}
           </button>

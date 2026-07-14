@@ -6,6 +6,7 @@ import type { Trip, Idea } from '../types'
 import { yearGroupOf } from '../types'
 import { tripRouteSegments, concatSegments, topmostPoint, sliceCoordinates, coordsLengthKm, type LngLat } from '../lib/geo'
 import type { EditStop } from '../lib/editSession'
+import { CompassIcon } from './icons'
 
 const MAP_STYLES = {
   dark: 'https://tiles.openfreemap.org/styles/dark',
@@ -686,7 +687,9 @@ export default function MapView({
     <>
       <div ref={containerRef} className="map-root" />
       <div className={`loading-veil${ready ? ' done' : ''}`}>
-        <div className="loading-globe">🧭</div>
+        <div className="loading-globe">
+          <CompassIcon size={40} />
+        </div>
         <p>Charting the atlas…</p>
       </div>
       {ready && (activeYears.size === 0 || activeCategories.size === 0) && (

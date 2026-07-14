@@ -27,13 +27,25 @@ import {
 } from './lib/editSession'
 import type { Trip, Profile, Approval, Idea, ApprovalKind } from './types'
 import { yearGroupOf } from './types'
+import {
+  CharacterIcon,
+  CompassIcon,
+  SunIcon,
+  MoonIcon,
+  SettingsIcon,
+  CloseIcon,
+  AddIdeaIcon,
+  CheckIcon,
+} from './components/icons'
 
 const SIDEBAR_WIDTH = 340
 
 function LoadingScreen({ label }: { label: string }) {
   return (
     <div className="loading-veil">
-      <div className="loading-globe">🧭</div>
+      <div className="loading-globe">
+        <CompassIcon size={40} />
+      </div>
       <p>{label}</p>
     </div>
   )
@@ -295,7 +307,7 @@ function AtlasMap({
         }}
       />
       <header className="brand glass">
-        <span className="brand-mark">🧭</span>
+        <CompassIcon size={26} className="brand-mark" />
         <div>
           <h1>Atlas</h1>
         </div>
@@ -306,12 +318,12 @@ function AtlasMap({
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             onClick={toggleTheme}
           >
-            {theme === 'dark' ? '🌙' : '☀️'}
+            {theme === 'dark' ? <MoonIcon size={20} /> : <SunIcon size={20} />}
           </button>
         )}
         {currentUser && (
           <button type="button" className="settings-gear" title="Settings" onClick={() => setSettingsOpen(true)}>
-            ⚙️
+            <SettingsIcon size={20} />
           </button>
         )}
         {currentUser && onSignOut && (
@@ -322,14 +334,16 @@ function AtlasMap({
               title="Account"
               onClick={() => setWhoamiOpen((o) => !o)}
             >
-              {currentUser.emoji} <span className="whoami-name">{currentUser.displayName}</span>
+              <CharacterIcon emoji={currentUser.emoji} color={currentUser.color} size={28} />
+              <span className="whoami-name">{currentUser.displayName}</span>
             </button>
             {whoamiOpen && (
               <>
                 <div className="dropdown-backdrop" onClick={() => setWhoamiOpen(false)} />
                 <div className="whoami-menu glass">
                   <span className="whoami-menu-label">
-                    Signed in as {currentUser.emoji} {currentUser.displayName}
+                    <CharacterIcon emoji={currentUser.emoji} color={currentUser.color} size={22} />
+                    Signed in as {currentUser.displayName}
                   </span>
                   <button
                     type="button"
@@ -369,7 +383,15 @@ function AtlasMap({
             setPendingIdeaLocation(null)
           }}
         >
-          {addIdeaMode ? '✕ Cancel' : '📍 Add idea'}
+          {addIdeaMode ? (
+            <>
+              <CloseIcon size={15} /> Cancel
+            </>
+          ) : (
+            <>
+              <AddIdeaIcon size={15} /> Add idea
+            </>
+          )}
         </button>
       )}
       {pendingIdeaLocation && onAddIdea && (
@@ -426,7 +448,11 @@ function AtlasMap({
           saving={saving}
         />
       )}
-      {savedToast && <div className="toast glass">Trip saved ✓</div>}
+      {savedToast && (
+        <div className="toast glass">
+          Trip saved <CheckIcon size={13} />
+        </div>
+      )}
       <Sidebar
         trips={trips}
         members={members}
