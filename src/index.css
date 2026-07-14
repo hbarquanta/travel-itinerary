@@ -539,6 +539,15 @@ body,
 }
 
 .emoji-option {
+  /* A bare <button> carries a default UA padding (Chrome: 1px 6px) that
+     nothing else in this file resets — asymmetric between its horizontal
+     and vertical values, so the fixed-size icon inside (larger than the
+     padded content box) overflowed off-center instead of evenly, and the
+     selection border (drawn on this box) ended up visibly offset from it. */
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  font: inherit;
   width: 46px;
   height: 46px;
   display: grid;
