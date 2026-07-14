@@ -122,7 +122,7 @@ export default function SettingsPanel({ currentUser, members, theme, onToggleThe
                   aria-label={takenName ? `${e} — taken by ${takenName}` : `Use ${e}`}
                   title={takenName ? `Taken by ${takenName}` : undefined}
                 >
-                  <CharacterIcon emoji={e} color={CHARACTER_ICON_COLORS[e]} size={26} />
+                  <CharacterIcon emoji={e} color={CHARACTER_ICON_COLORS[e]} size={46} />
                 </button>
               )
             })}

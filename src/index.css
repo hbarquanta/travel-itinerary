@@ -539,16 +539,29 @@ body,
 }
 
 .emoji-option {
-  width: 36px;
-  height: 36px;
+  width: 46px;
+  height: 46px;
   display: grid;
   place-items: center;
-  font-size: 18px;
-  border-radius: 9px;
+  border-radius: 11px;
   border: 1.5px solid transparent;
   background: rgba(var(--surface-tint), 0.04);
   cursor: pointer;
   transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s;
+}
+
+/* CharacterIcon takes a fixed pixel `size` prop from JS (see SettingsPanel),
+   but the right size differs by breakpoint here, and percentage sizing on
+   .char-icon (display: inline-grid) doesn't resolve reliably for height —
+   so both breakpoints just override with their own fixed px instead. */
+.emoji-option .char-icon {
+  width: 46px !important;
+  height: 46px !important;
+}
+
+.emoji-option .char-icon svg {
+  width: 28px !important;
+  height: 28px !important;
 }
 
 .emoji-option:hover {
@@ -1928,5 +1941,29 @@ section.year-off {
     right: 10px;
     width: min(220px, calc(100vw - 20px));
     min-width: 0;
+  }
+
+  /* Desktop's 46px cells don't fit 6 per row once the settings panel
+     narrows to 88vw on a phone — shrink cell, gap, and the icon inside
+     together rather than relying on percentage sizing (see the .char-icon
+     override above, which doesn't resolve reliably on inline-grid boxes). */
+  .emoji-grid {
+    gap: 5px;
+  }
+
+  .emoji-option {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+
+  .emoji-option .char-icon {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .emoji-option .char-icon svg {
+    width: 21px !important;
+    height: 21px !important;
   }
 }
