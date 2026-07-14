@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { REVEAL_HIDDEN_KEY } from './Login'
 import type { Profile } from '../types'
-import { CharacterIcon, CHARACTER_ICON_COLORS, CloseIcon, SunIcon, MoonIcon, CheckIcon } from './icons'
+import { CharacterIcon, CHARACTER_COLOR_OPTIONS, CloseIcon, SunIcon, MoonIcon, CheckIcon } from './icons'
 
 interface SettingsPanelProps {
   currentUser: Profile
@@ -36,9 +36,15 @@ export default function SettingsPanel({ currentUser, members, theme, onToggleThe
   const [emoji, setEmoji] = useState(currentUser.emoji)
   const [emojiStatus, setEmojiStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [emojiError, setEmojiError] = useState('')
+  const [color, setColor] = useState(currentUser.color)
+  const [colorStatus, setColorStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [colorError, setColorError] = useState('')
 
   const takenBy = new Map(
     members.filter((m) => m.id !== currentUser.id).map((m) => [m.emoji, m.displayName]),
+  )
+  const takenColorBy = new Map(
+    members.filter((m) => m.id !== currentUser.id).map((m) => [m.color, m.displayName]),
   )
 
   async function handleSave(e: FormEvent) {
@@ -86,6 +92,25 @@ export default function SettingsPanel({ currentUser, members, theme, onToggleThe
     }
   }
 
+  async function pickColor(next: string) {
+    if (!supabase || next === color || takenColorBy.has(next)) return
+    const previous = color
+    setColor(next)
+    setColorStatus('saving')
+    setColorError('')
+    const { error: updateError } = await supabase.from('profiles').update({ color: next }).eq('id', currentUser.id)
+    if (updateError) {
+      setColor(previous)
+      setColorStatus('error')
+      // Postgres unique_violation — someone else grabbed it a moment ago.
+      setColorError(
+        updateError.code === '23505' ? 'Someone just took that one — pick another.' : "Couldn't save — try again.",
+      )
+    } else {
+      setColorStatus('saved')
+    }
+  }
+
   return (
     <div className="settings-overlay" onClick={onClose}>
       <aside className="settings-panel glass" onClick={(e) => e.stopPropagation()}>
@@ -122,7 +147,7 @@ export default function SettingsPanel({ currentUser, members, theme, onToggleThe
                   aria-label={takenName ? `${e} — taken by ${takenName}` : `Use ${e}`}
                   title={takenName ? `Taken by ${takenName}` : undefined}
                 >
-                  <CharacterIcon emoji={e} color={CHARACTER_ICON_COLORS[e]} size={46} />
+                  <CharacterIcon emoji={e} color={color} size={46} />
                 </button>
               )
             })}
@@ -133,6 +158,33 @@ export default function SettingsPanel({ currentUser, members, theme, onToggleThe
             </p>
           )}
           {emojiStatus === 'error' && <p className="login-error">{emojiError}</p>}
+        </div>
+
+        <div className="admin-field">
+          <span>Your color</span>
+          <div className="color-grid">
+            {CHARACTER_COLOR_OPTIONS.map((c) => {
+              const takenName = takenColorBy.get(c)
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  className={`color-option${color === c ? ' selected' : ''}${takenName ? ' taken' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => pickColor(c)}
+                  disabled={!!takenName}
+                  aria-label={takenName ? `${c} — taken by ${takenName}` : `Use ${c}`}
+                  title={takenName ? `Taken by ${takenName}` : undefined}
+                />
+              )
+            })}
+          </div>
+          {colorStatus === 'saved' && (
+            <p className="settings-saved">
+              Saved <CheckIcon size={13} />
+            </p>
+          )}
+          {colorStatus === 'error' && <p className="login-error">{colorError}</p>}
         </div>
 
         <form onSubmit={handleSave} className="settings-form">

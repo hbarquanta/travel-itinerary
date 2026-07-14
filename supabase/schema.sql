@@ -68,10 +68,13 @@ insert into allowed_users (email, display_name, color, emoji, is_admin, hidden, 
   ('mateo@atlas.internal',       'Mateo',   '#a3e635', '🦅', false, false, 3),
   ('michael@atlas.internal',     'Michael', '#f43f5e', '🐝', false, false, 4),
   ('test@atlas.internal',        'Test',    '#94a3b8', '🧪', false, true,  5)
+-- display_name/color/emoji are deliberately NOT in this update set — this
+-- block re-runs every time schema.sql does (for unrelated migrations, e.g.
+-- an RLS or enum fix elsewhere in this file), and it used to stomp anyone's
+-- self-service Settings change (a new emoji, a new color) back to these
+-- hardcoded defaults on every single re-run. Only admin-controlled fields
+-- belong here; user-customizable ones only seed a *new* row.
 on conflict (email) do update set
-  display_name = excluded.display_name,
-  color = excluded.color,
-  emoji = excluded.emoji,
   is_admin = excluded.is_admin,
   hidden = excluded.hidden,
   sort_order = excluded.sort_order;
@@ -108,8 +111,15 @@ create table if not exists profiles (
   display_name text not null,
   color text not null,
   emoji text not null,
-  is_admin boolean not null default false
+  is_admin boolean not null default false,
+  -- Mirrors allowed_users.hidden (admin-controlled, not user-editable) so
+  -- the frontend can filter e.g. the Test account out of member-facing
+  -- lists (approval rows, participant pickers) without needing a second
+  -- round trip to allowed_users, which the client can't read directly.
+  hidden boolean not null default false
 );
+
+alter table profiles add column if not exists hidden boolean not null default false;
 
 -- Auto-create a profile from the allowlist when an allowlisted email signs
 -- in for the first time. Non-allowlisted emails simply get no profile row,
@@ -125,8 +135,8 @@ declare
 begin
   select * into a from allowed_users where email = new.email;
   if found then
-    insert into profiles (id, email, display_name, color, emoji, is_admin)
-    values (new.id, new.email, a.display_name, a.color, a.emoji, a.is_admin)
+    insert into profiles (id, email, display_name, color, emoji, is_admin, hidden)
+    values (new.id, new.email, a.display_name, a.color, a.emoji, a.is_admin, a.hidden)
     on conflict (id) do nothing;
   end if;
   return new;
@@ -142,17 +152,18 @@ create trigger on_auth_user_created
 -- If someone's auth account already existed (e.g. an earlier login attempt
 -- before their email was added to allowed_users, or before this schema was
 -- applied) they'd have no profile despite being allowlisted now. Re-running
--- this block (safe, idempotent) catches those cases and keeps existing
--- profiles' display info in sync with allowed_users too.
-insert into profiles (id, email, display_name, color, emoji, is_admin)
-select u.id, u.email, a.display_name, a.color, a.emoji, a.is_admin
+-- this block (safe, idempotent) catches those cases. Only is_admin/hidden
+-- (truly admin-controlled) stay in the conflict-update — display_name/
+-- color/emoji are self-service via Settings, and overwriting them here on
+-- every re-run was clobbering anyone's actual choice back to the
+-- allowed_users default.
+insert into profiles (id, email, display_name, color, emoji, is_admin, hidden)
+select u.id, u.email, a.display_name, a.color, a.emoji, a.is_admin, a.hidden
 from auth.users u
 join allowed_users a on a.email = u.email
 on conflict (id) do update set
-  display_name = excluded.display_name,
-  color = excluded.color,
-  emoji = excluded.emoji,
-  is_admin = excluded.is_admin;
+  is_admin = excluded.is_admin,
+  hidden = excluded.hidden;
 
 -- Every character's emoji must be unique — two people can't be the same
 -- animal. Enforced at the DB level so a race between two people picking
@@ -165,6 +176,14 @@ do $$ begin
 exception when duplicate_object or duplicate_table then null; end $$;
 do $$ begin
   alter table allowed_users add constraint allowed_users_emoji_unique unique (emoji);
+exception when duplicate_object or duplicate_table then null; end $$;
+
+-- Same idea, same reasoning, for color — one avatar color per person.
+do $$ begin
+  alter table profiles add constraint profiles_color_unique unique (color);
+exception when duplicate_object or duplicate_table then null; end $$;
+do $$ begin
+  alter table allowed_users add constraint allowed_users_color_unique unique (color);
 exception when duplicate_object or duplicate_table then null; end $$;
 
 -- The reverse direction of the sync above: allowed_users seeds profiles on

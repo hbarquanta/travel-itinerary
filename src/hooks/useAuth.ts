@@ -24,7 +24,7 @@ export function useAuth(): AuthState {
     async function fetchProfile(userId: string) {
       const { data } = await supabase!
         .from('profiles')
-        .select('id, email, display_name, color, emoji, is_admin')
+        .select('id, email, display_name, color, emoji, is_admin, hidden')
         .eq('id', userId)
         .maybeSingle()
       if (cancelled) return null
@@ -36,6 +36,7 @@ export function useAuth(): AuthState {
             color: data.color,
             emoji: data.emoji,
             isAdmin: data.is_admin,
+            hidden: data.hidden,
           } as Profile)
         : null
     }

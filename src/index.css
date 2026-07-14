@@ -596,6 +596,48 @@ body,
   transform: none;
 }
 
+/* ── Color picker (Settings — 10-swatch bar, one color per person) ── */
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.color-option {
+  /* Same UA-button reset as .emoji-option — a bare <button>'s default
+     padding otherwise fights this element's own border-radius: 50%. */
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  font: inherit;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.color-option:hover {
+  transform: scale(1.12);
+}
+
+.color-option.selected {
+  box-shadow: 0 0 0 2px var(--sand), 0 0 0 4px var(--accent);
+}
+
+.color-option.taken {
+  opacity: 0.3;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+.color-option.taken:hover {
+  transform: none;
+}
+
 .settings-form {
   display: flex;
   flex-direction: column;

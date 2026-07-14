@@ -12,34 +12,23 @@ interface CharacterIconProps {
   className?: string
 }
 
-/** Decorative per-animal accent used only where an emoji isn't yet tied to a
- *  real user's chosen color, e.g. the settings picker grid of all 24 options. */
-export const CHARACTER_ICON_COLORS: Record<string, string> = {
-  '🦊': '#f97316',
-  '🐙': '#8b5cf6',
-  '🦋': '#22d3ee',
-  '🐝': '#f43f5e',
-  '🦅': '#a3e635',
-  '🧪': '#94a3b8',
-  '🐺': '#64748b',
-  '🦉': '#a16207',
-  '🐢': '#16a34a',
-  '🦁': '#d97706',
-  '🐯': '#ea580c',
-  '🐼': '#57534e',
-  '🦄': '#a78bfa',
-  '🐸': '#22c55e',
-  '🦖': '#65a30d',
-  '🐳': '#3b82f6',
-  '🦑': '#c026d3',
-  '🦩': '#ec4899',
-  '🦔': '#92400e',
-  '🐨': '#6b7280',
-  '🐧': '#1e3a5f',
-  '🦆': '#eab308',
-  '🦜': '#0d9488',
-  '🐬': '#0891b2',
-}
+/** The 10 selectable avatar colors — each real, unique to whoever picks it
+ *  (see profiles_color_unique / allowed_users_color_unique in schema.sql).
+ *  The first 6 are the group's existing colors (never reorder these without
+ *  checking who's already on which one); the last 4 are headroom for more
+ *  people or a color change. */
+export const CHARACTER_COLOR_OPTIONS = [
+  '#f97316', // orange — Fabian
+  '#8b5cf6', // violet — Dominik
+  '#22d3ee', // cyan — Florian
+  '#a3e635', // lime — Mateo
+  '#f43f5e', // rose — Michael
+  '#94a3b8', // slate — Test
+  '#3b82f6', // blue
+  '#10b981', // emerald
+  '#eab308', // amber
+  '#d946ef', // fuchsia
+]
 
 /** SVG path data for each character glyph, generated externally (Canva) from
  *  a prompt asking for a simple flat white-silhouette icon per animal — see

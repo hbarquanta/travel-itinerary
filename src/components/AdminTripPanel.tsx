@@ -92,7 +92,7 @@ export default function AdminTripPanel({
         <div className="admin-field">
           <span>Participants</span>
           <div className="participant-toggle-row">
-            {members.map((m) => {
+            {members.filter((m) => !m.hidden).map((m) => {
               const on = session.participantIds.includes(m.id)
               return (
                 <button

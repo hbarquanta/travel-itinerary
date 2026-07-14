@@ -12,6 +12,9 @@ export interface Profile {
   color: string
   emoji: string
   isAdmin: boolean
+  /** Dev/test accounts — excluded from member-facing lists (approval rows,
+   *  participant pickers), never just from the pre-login roster. */
+  hidden: boolean
 }
 
 export interface Stop {

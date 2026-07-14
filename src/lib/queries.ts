@@ -42,6 +42,7 @@ interface ProfileRow {
   color: string
   emoji: string
   is_admin: boolean
+  hidden: boolean
 }
 
 interface ApprovalRow {
@@ -83,6 +84,7 @@ const toProfile = (row: ProfileRow): Profile => ({
   color: row.color,
   emoji: row.emoji,
   isAdmin: row.is_admin,
+  hidden: row.hidden,
 })
 
 export async function fetchTrips(): Promise<Trip[]> {
@@ -126,7 +128,7 @@ export async function fetchProfiles(): Promise<Profile[]> {
   const db = client()
   const { data, error } = await db
     .from('profiles')
-    .select('id, email, display_name, color, emoji, is_admin')
+    .select('id, email, display_name, color, emoji, is_admin, hidden')
     .order('is_admin', { ascending: false })
     .order('display_name', { ascending: true })
   if (error) throw error

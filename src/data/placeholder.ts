@@ -7,11 +7,11 @@
 import type { Trip, Profile, Approval, Idea } from '../types'
 
 export const members: Profile[] = [
-  { id: 'u-fabian', email: 'fabian.joebstl@gmail.com', displayName: 'Fabian', color: '#f97316', emoji: '🦊', isAdmin: true },
-  { id: 'u-alex', email: 'alex@example.com', displayName: 'Alex', color: '#8b5cf6', emoji: '🐙', isAdmin: false },
-  { id: 'u-mara', email: 'mara@example.com', displayName: 'Mara', color: '#22d3ee', emoji: '🦋', isAdmin: false },
-  { id: 'u-jonas', email: 'jonas@example.com', displayName: 'Jonas', color: '#a3e635', emoji: '🦅', isAdmin: false },
-  { id: 'u-elli', email: 'elli@example.com', displayName: 'Elli', color: '#f43f5e', emoji: '🐝', isAdmin: false },
+  { id: 'u-fabian', email: 'fabian.joebstl@gmail.com', displayName: 'Fabian', color: '#f97316', emoji: '🦊', isAdmin: true, hidden: false },
+  { id: 'u-alex', email: 'alex@example.com', displayName: 'Alex', color: '#8b5cf6', emoji: '🐙', isAdmin: false, hidden: false },
+  { id: 'u-mara', email: 'mara@example.com', displayName: 'Mara', color: '#22d3ee', emoji: '🦋', isAdmin: false, hidden: false },
+  { id: 'u-jonas', email: 'jonas@example.com', displayName: 'Jonas', color: '#a3e635', emoji: '🦅', isAdmin: false, hidden: false },
+  { id: 'u-elli', email: 'elli@example.com', displayName: 'Elli', color: '#f43f5e', emoji: '🐝', isAdmin: false, hidden: false },
 ]
 
 export const trips: Trip[] = [

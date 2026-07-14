@@ -207,10 +207,14 @@ function TripCard({
   onEdit?: (trip: Trip) => void
 }) {
   const status = STATUS_META[trip.status]
+  // Dev/test accounts never belong in a member-facing roster like this one
+  // (approvals, participants) — hidden is for exactly that, not just the
+  // pre-login character picker.
+  const visibleMembers = members.filter((m) => !m.hidden)
   const tripApproved = new Set(approvals.filter((a) => a.kind === 'trip').map((a) => a.userId))
   const datesApproved = new Set(approvals.filter((a) => a.kind === 'dates').map((a) => a.userId))
-  const allIn = members.every((m) => tripApproved.has(m.id))
-  const participants = members.filter((m) => participantIds.includes(m.id))
+  const allIn = visibleMembers.every((m) => tripApproved.has(m.id))
+  const participants = visibleMembers.filter((m) => participantIds.includes(m.id))
 
   return (
     <article
@@ -257,7 +261,7 @@ function TripCard({
         </div>
       )}
       <div className="approval-row" title="Approvals — filled: trip, corner tick: dates">
-        {members.map((m) => {
+        {visibleMembers.map((m) => {
           const approved = tripApproved.has(m.id)
           const own = currentUserId !== null && m.id === currentUserId
           const label = `${m.displayName}${approved ? ' approved the trip' : ' — not yet'}${datesApproved.has(m.id) ? ', dates ✓' : ''}${own ? ' (tap to toggle)' : ''}`
