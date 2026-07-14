@@ -300,15 +300,34 @@ as $$
   select exists (select 1 from profiles where id = uid and is_admin);
 $$;
 
+-- The caller's own current is_admin value, fetched via the same RLS-bypass
+-- trick as the two functions above — used below to stop a self-update from
+-- changing its own is_admin, without which `profiles_update_self` only
+-- checked *whose* row you were touching, never *which columns*. Any signed-in
+-- user could otherwise self-promote with a single REST PATCH call (the
+-- anon key and their own session token are both sitting in plain sight in
+-- every browser Network tab — no real "hacking" required).
+create or replace function current_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select is_admin from profiles where id = auth.uid();
+$$;
+
 -- profiles: any allowlisted user (i.e. anyone who already has a profile row)
--- can read everyone's profile; you can only update your own row.
+-- can read everyone's profile; you can only update your own row, and the
+-- update can't change your own is_admin (see current_is_admin above).
 drop policy if exists profiles_select on profiles;
 create policy profiles_select on profiles for select
   using (is_allowlisted(auth.uid()));
 
 drop policy if exists profiles_update_self on profiles;
 create policy profiles_update_self on profiles for update
-  using (id = auth.uid());
+  using (id = auth.uid())
+  with check (id = auth.uid() and is_admin = current_is_admin());
 
 -- trips: everyone allowlisted can read; only the admin can write.
 drop policy if exists trips_select on trips;

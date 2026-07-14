@@ -1,61 +1,101 @@
--- Renames trips to short, evocative names and rewrites each description as
--- a plain hyphen-separated stop listing, mirroring the actual route on the
--- map exactly (confirmed against a live `select ... from trips join stops`
--- query on 2026-07-14, not the stale seed files, which had drifted out of
--- date in several places — e.g. the Ukraine trip's Chișinău/Bucharest leg
--- and the Oman trip's Muscat-Salalah-Muscat backtrack weren't in the seeds
--- at all).
+-- Renames trips to short, evocative names, rewrites each description as a
+-- plain hyphen-separated stop listing (mirroring the actual route on the
+-- map), and rebuilds the stop lists for two trips that grew since this
+-- file was first written:
+--   - Oman -> Arabia: extended into a full Oman-then-Saudi loop, flying
+--     home from Riyadh instead of back through Muscat.
+--   - Baku & Tehran -> Persia: Kashan and Yazd added, the two classic
+--     stops on the real Iran tourist trail that were missing between
+--     Baku/Isfahan and Isfahan/Shiraz.
 --
--- Matched by the CURRENT (pre-rename) title, so this is safe to re-run —
--- an update just re-sets the same title/description, unlike the
--- INSERT-based seed files. If you rename a trip again after this runs,
--- re-running this file is a no-op for that row (title no longer matches).
+-- Every match below checks old-title-OR-new-title, not just the old one —
+-- this consolidates an earlier version of this file that may or may not
+-- have actually been run against the database, so it's correct either way
+-- and safe to re-run afterward (updates just re-set the same values; the
+-- stop rebuilds delete-then-reinsert rather than duplicate).
 
+-- ── Arabia (was: Oman) ──────────────────────────────────────────────────
+delete from stops where trip_id = (select id from trips where title in ('Oman', 'Arabia'));
+insert into stops (trip_id, name, lat, lng, order_index, notes, travel_mode)
+select id, s.name, s.lat, s.lng, s.order_index, s.notes, s.travel_mode
+from trips, (values
+  ('Vienna',        48.2082, 16.3738, 0, 'Home base.',                       'ground'),
+  ('Muscat',        23.5859, 58.4059, 1, 'Fly in from Vienna.',              'flight'),
+  ('Nizwa',         22.9333, 57.5333, 2, null,                               'ground'),
+  ('Jebel Akhdar',  23.0667, 57.6667, 3, null,                               'ground'),
+  ('Wahiba Sands',  22.0833, 58.5000, 4, null,                               'ground'),
+  ('Salalah',       17.0151, 54.0924, 5, null,                               'ground'),
+  ('AlUla',         26.6097, 37.9153, 6, 'Fly on to Saudi Arabia.',          'flight'),
+  ('Jeddah',        21.4858, 39.1925, 7, null,                               'ground'),
+  ('Riyadh',        24.7136, 46.6753, 8, null,                               'ground'),
+  ('Vienna',        48.2082, 16.3738, 9, 'Fly home from Riyadh.',            'flight')
+) as s(name, lat, lng, order_index, notes, travel_mode)
+where trips.title in ('Oman', 'Arabia');
+
+-- ── Persia (was: Baku & Tehran) ──────────────────────────────────────────
+delete from stops where trip_id = (select id from trips where title in ('Baku & Tehran', 'Persia'));
+insert into stops (trip_id, name, lat, lng, order_index, notes, travel_mode)
+select id, s.name, s.lat, s.lng, s.order_index, s.notes, s.travel_mode
+from trips, (values
+  ('Vienna',  48.2082, 16.3738, 0, 'Home base.',              'ground'),
+  ('Tbilisi', 41.7151, 44.8271, 1, 'Fly in from Vienna.',     'flight'),
+  ('Baku',    40.4093, 49.8671, 2, 'Night train from Tbilisi.','ground'),
+  ('Kashan',  33.9850, 51.4100, 3, null,                      'ground'),
+  ('Isfahan', 32.6546, 51.6680, 4, null,                      'ground'),
+  ('Yazd',    31.8974, 54.3569, 5, null,                      'ground'),
+  ('Shiraz',  29.5918, 52.5837, 6, null,                      'ground'),
+  ('Tehran',  35.6892, 51.3890, 7, null,                      'ground'),
+  ('Vienna',  48.2082, 16.3738, 8, 'Fly home from Tehran.',   'flight')
+) as s(name, lat, lng, order_index, notes, travel_mode)
+where trips.title in ('Baku & Tehran', 'Persia');
+
+-- ── Renames + descriptions ───────────────────────────────────────────────
 update trips set
   title = 'Westbalkan II',
   description = 'Graz-Wildon-Šibenik-Dubrovnik-Herceg Novi-Kotor-Budva-Cetinje-Podgorica-Nikšić-Mostar-Sarajevo-Banja Luka-Wildon-Graz'
-  where title = 'Balkans Road Trip';
+  where title in ('Balkans Road Trip', 'Westbalkan II');
 
 update trips set
   title = 'Polska',
   description = 'Graz-Poznań-Łódź-Wrocław-Vienna-Graz'
-  where title = 'Western Poland';
+  where title in ('Western Poland', 'Polska');
 
 update trips set
   title = 'Transcaucasia',
   description = 'Vienna-Istanbul-Ankara-Kars-Batumi-Tbilisi-Yerevan-Vienna'
-  where title = 'Turkey & the Caucasus';
+  where title in ('Turkey & the Caucasus', 'Transcaucasia');
 
 update trips set
   title = 'Україна',
   description = 'Vienna-Lviv-Kyiv-Kharkiv-Odesa-Chișinău-Bucharest-Vienna'
-  where title = 'Ukraine';
+  where title in ('Ukraine', 'Україна');
 
 update trips set
   title = 'Turkestan',
   description = 'Vienna-Tbilisi-Baku-Aktau-Khiva-Bukhara-Samarkand-Tashkent-Vienna'
-  where title = 'Caspian Crossing to Uzbekistan';
+  where title in ('Caspian Crossing to Uzbekistan', 'Turkestan');
 
 update trips set
   title = 'Persia',
-  description = 'Vienna-Tbilisi-Baku-Isfahan-Shiraz-Tehran-Vienna'
-  where title = 'Baku & Tehran';
+  description = 'Vienna-Tbilisi-Baku-Kashan-Isfahan-Yazd-Shiraz-Tehran-Vienna'
+  where title in ('Baku & Tehran', 'Persia');
 
 update trips set
   title = 'Westbalkan III',
   description = 'Graz-Niš-Pristina-Skopje-Tirana-Budva-Dubrovnik-Split-Graz'
-  where title = 'Balkans Road Trip II';
+  where title in ('Balkans Road Trip II', 'Westbalkan III');
 
 update trips set
   title = 'Bodensee',
   description = 'Vienna-Bregenz-Konstanz-St. Gallen-Zürich-Vienna'
-  where title = 'Bodensee Loop';
+  where title in ('Bodensee Loop', 'Bodensee');
 
 update trips set
-  description = 'Vienna-Muscat-Salalah-Muscat-Vienna'
-  where title = 'Oman';
+  title = 'Arabia',
+  description = 'Vienna-Muscat-Nizwa-Jebel Akhdar-Wahiba Sands-Salalah-AlUla-Jeddah-Riyadh-Vienna'
+  where title in ('Oman', 'Arabia');
 
 update trips set
   title = 'Transsiberia',
   description = 'Vienna-Moscow-Yekaterinburg-Novosibirsk-Irkutsk-Ulan-Ude-Ulaanbaatar-Beijing-Shanghai-Vienna'
-  where title = 'Trans-Siberian to China';
+  where title in ('Trans-Siberian to China', 'Transsiberia');
