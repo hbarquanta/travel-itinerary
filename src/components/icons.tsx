@@ -431,3 +431,14 @@ export function CheckIcon({ size = 22, className }: UIIconProps) {
     </svg>
   )
 }
+
+export function ChatIcon({ size = 22, className }: UIIconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} className={className} {...strokeProps}>
+      <path d="M4 12.5 C4 7.8 7.8 4.5 12.5 4.5 C17.2 4.5 20.5 7.8 20.5 12 C20.5 16.2 17.2 19.2 12.5 19.2 C11.3 19.2 10.2 19 9.2 18.6 L5 20 L6.1 16.5 C4.8 15.3 4 13.9 4 12.5 Z" />
+      <circle cx="9" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="12.7" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="16.4" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}

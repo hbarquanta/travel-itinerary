@@ -7,6 +7,7 @@ import Login from './components/Login'
 import AddIdeaForm from './components/AddIdeaForm'
 import AdminTripPanel from './components/AdminTripPanel'
 import SettingsPanel from './components/SettingsPanel'
+import ChatPanel from './components/ChatPanel'
 import {
   trips as placeholderTrips,
   members as placeholderMembers,
@@ -16,6 +17,7 @@ import {
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { useAuth } from './hooks/useAuth'
 import { useTripsData } from './hooks/useTripsData'
+import { useChatMessages } from './hooks/useChatMessages'
 import { addApproval, removeApproval, addIdea, deleteIdea, deleteTrip } from './lib/queries'
 import {
   newEditSession,
@@ -25,7 +27,7 @@ import {
   makeLocalId,
   type EditSession,
 } from './lib/editSession'
-import type { Trip, Profile, Approval, Idea, ApprovalKind } from './types'
+import type { Trip, Profile, Approval, Idea, ApprovalKind, ChatMessage } from './types'
 import { yearGroupOf } from './types'
 import {
   CharacterIcon,
@@ -36,6 +38,7 @@ import {
   CloseIcon,
   AddIdeaIcon,
   CheckIcon,
+  ChatIcon,
 } from './components/icons'
 
 const SIDEBAR_WIDTH = 340
@@ -70,6 +73,7 @@ function NotAllowlisted() {
 function ConnectedApp() {
   const { loading: authLoading, session, profile } = useAuth()
   const { trips, members, approvals, ideas, participants, loading: dataLoading, refetch } = useTripsData(!!profile)
+  const { messages, send: sendMessage, remove: deleteMessage } = useChatMessages(!!profile)
 
   if (authLoading) return <LoadingScreen label="Signing in…" />
   if (!session) return <Login />
@@ -95,6 +99,9 @@ function ConnectedApp() {
       onDeleteIdea={(ideaId) => deleteIdea(ideaId)}
       onDataChanged={refetch}
       onSignOut={() => supabase?.auth.signOut()}
+      chatMessages={messages}
+      onSendMessage={(body) => sendMessage(body, profile.id)}
+      onDeleteMessage={(id) => deleteMessage(id)}
     />
   )
 }
@@ -117,6 +124,10 @@ interface AtlasMapProps {
   /** Called after an admin save/delete commits, to refresh from Supabase immediately. */
   onDataChanged?: () => void
   onSignOut?: () => void
+  /** Global chat — empty/no-ops in local demo mode. */
+  chatMessages?: ChatMessage[]
+  onSendMessage?: (body: string) => void
+  onDeleteMessage?: (id: string) => void
 }
 
 function AtlasMap({
@@ -133,6 +144,9 @@ function AtlasMap({
   onDeleteIdea,
   onDataChanged,
   onSignOut,
+  chatMessages = [],
+  onSendMessage,
+  onDeleteMessage,
 }: AtlasMapProps) {
   const years = useMemo(() => {
     const bySortKey = new Map<string, number>()
@@ -166,6 +180,7 @@ function AtlasMap({
   const [saving, setSaving] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [whoamiOpen, setWhoamiOpen] = useState(false)
+  const [chatOpen, setChatOpen] = useState(false)
   const [savedToast, setSavedToast] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>(
     () => (localStorage.getItem('atlas-theme') as 'dark' | 'light' | null) ?? 'light',
@@ -243,6 +258,7 @@ function AtlasMap({
       if (e.key !== 'Escape') return
       if (editSession) closeEditSession()
       else if (settingsOpen) setSettingsOpen(false)
+      else if (chatOpen) setChatOpen(false)
       else if (whoamiOpen) setWhoamiOpen(false)
       else if (pendingIdeaLocation) setPendingIdeaLocation(null)
       else if (addIdeaMode) setAddIdeaMode(false)
@@ -321,6 +337,11 @@ function AtlasMap({
             {theme === 'dark' ? <MoonIcon size={20} /> : <SunIcon size={20} />}
           </button>
         )}
+        {currentUser && onSendMessage && (
+          <button type="button" className="settings-gear" title="Chat" onClick={() => setChatOpen((o) => !o)}>
+            <ChatIcon size={20} />
+          </button>
+        )}
         {currentUser && (
           <button type="button" className="settings-gear" title="Settings" onClick={() => setSettingsOpen(true)}>
             <SettingsIcon size={20} />
@@ -368,6 +389,16 @@ function AtlasMap({
           theme={theme}
           onToggleTheme={toggleTheme}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {chatOpen && currentUser && onSendMessage && onDeleteMessage && (
+        <ChatPanel
+          messages={chatMessages}
+          members={members}
+          currentUser={currentUser}
+          onSend={onSendMessage}
+          onDelete={onDeleteMessage}
+          onClose={() => setChatOpen(false)}
         />
       )}
       <div className="chips-wrap">

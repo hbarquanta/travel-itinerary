@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Trip, Stop, Idea, Approval, Profile, TripStatus, ApprovalKind, TripCategory } from '../types'
+import type { Trip, Stop, Idea, Approval, Profile, TripStatus, ApprovalKind, TripCategory, ChatMessage } from '../types'
 
 function client() {
   if (!supabase) throw new Error('Supabase is not configured')
@@ -268,6 +268,55 @@ export async function addIdea(idea: NewIdea) {
 export async function deleteIdea(id: string) {
   const db = client()
   const { error } = await db.from('ideas').delete().eq('id', id)
+  if (error) throw error
+}
+
+// ── Global chat ────────────────────────────────────────────────────────
+
+/** Kept in sync with the `char_length(body) <= 150` check constraint in
+ *  schema.sql — the DB is the real enforcement, this just drives the
+ *  input's maxLength/counter so people aren't surprised by a rejected send. */
+export const CHAT_MESSAGE_MAX_LENGTH = 150
+
+interface MessageRow {
+  id: string
+  body: string
+  created_by: string
+  created_at: string
+}
+
+const toChatMessage = (row: MessageRow): ChatMessage => ({
+  id: row.id,
+  body: row.body,
+  createdBy: row.created_by,
+  createdAt: row.created_at,
+})
+
+export async function fetchMessages(): Promise<ChatMessage[]> {
+  const db = client()
+  const { data, error } = await db
+    .from('messages')
+    .select('id, body, created_by, created_at')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return ((data ?? []) as MessageRow[]).map(toChatMessage)
+}
+
+export async function sendMessage(body: string, createdBy: string): Promise<ChatMessage> {
+  const db = client()
+  const { data, error } = await db
+    .from('messages')
+    .insert({ body, created_by: createdBy })
+    .select('id, body, created_by, created_at')
+    .single()
+  if (error) throw error
+  return toChatMessage(data as MessageRow)
+}
+
+/** Delete a message — RLS allows your own, or any if you're admin. */
+export async function deleteMessage(id: string) {
+  const db = client()
+  const { error } = await db.from('messages').delete().eq('id', id)
   if (error) throw error
 }
 

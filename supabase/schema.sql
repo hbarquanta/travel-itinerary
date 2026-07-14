@@ -256,12 +256,23 @@ create table if not exists trip_participants (
   primary key (trip_id, profile_id)
 );
 
+-- ── Chat (one global channel — every allowlisted member, capped length) ──
+create table if not exists messages (
+  id uuid primary key default gen_random_uuid(),
+  body text not null check (char_length(body) <= 150 and char_length(trim(body)) > 0),
+  created_by uuid not null references profiles (id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists messages_created_at_idx on messages (created_at);
+
 -- ── Row Level Security ───────────────────────────────────────────────────
 alter table profiles enable row level security;
 alter table trips enable row level security;
 alter table stops enable row level security;
 alter table trip_participants enable row level security;
 alter table ideas enable row level security;
+alter table messages enable row level security;
 alter table approvals enable row level security;
 
 -- Policies on `profiles` can't subquery `profiles` directly — Postgres has
@@ -365,6 +376,21 @@ create policy trip_participants_write_admin on trip_participants for all
   using (is_admin_user(auth.uid()))
   with check (is_admin_user(auth.uid()));
 
+-- messages: everyone allowlisted can read and post; you can only delete
+-- your own (typo/retraction), admin can delete anyone's (moderation).
+-- No update policy — a sent message is permanent, not editable in place.
+drop policy if exists messages_select on messages;
+create policy messages_select on messages for select
+  using (is_allowlisted(auth.uid()));
+
+drop policy if exists messages_insert on messages;
+create policy messages_insert on messages for insert
+  with check (is_allowlisted(auth.uid()) and created_by = auth.uid());
+
+drop policy if exists messages_delete_own on messages;
+create policy messages_delete_own on messages for delete
+  using (created_by = auth.uid() or is_admin_user(auth.uid()));
+
 -- ── Realtime ─────────────────────────────────────────────────────────────
 do $$ begin
   alter publication supabase_realtime add table profiles;
@@ -383,4 +409,7 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table trip_participants;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table messages;
 exception when duplicate_object then null; end $$;

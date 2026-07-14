@@ -73,3 +73,12 @@ export interface Idea {
   note?: string | null
   createdBy: string
 }
+
+/** A single global-chat message. Body is capped at 150 characters, both
+ *  client-side (the input's maxLength) and by a DB check constraint. */
+export interface ChatMessage {
+  id: string
+  body: string
+  createdBy: string
+  createdAt: string
+}
