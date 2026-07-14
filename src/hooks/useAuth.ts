@@ -22,12 +22,19 @@ export function useAuth(): AuthState {
     let channel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null
 
     async function fetchProfile(userId: string) {
-      const { data } = await supabase!
+      const { data, error } = await supabase!
         .from('profiles')
         .select('id, email, display_name, color, emoji, is_admin, hidden')
         .eq('id', userId)
         .maybeSingle()
       if (cancelled) return null
+      // A real query error (e.g. a column drifted out of sync with the
+      // live schema — this exact bug locked everyone out once already)
+      // looks identical to "not allowlisted" downstream (null profile ->
+      // NotAllowlisted screen) unless it's surfaced somewhere. This won't
+      // fix the underlying problem, but it turns a silent, confusing
+      // lockout into something checkable in the console within seconds.
+      if (error) console.error('fetchProfile failed (will render as not-allowlisted):', error)
       return data
         ? ({
             id: data.id,
