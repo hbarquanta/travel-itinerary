@@ -15,20 +15,27 @@
 -- stop rebuilds delete-then-reinsert rather than duplicate).
 
 -- ── Arabia (was: Oman) ──────────────────────────────────────────────────
+-- Oman-Saudi has no practical land crossing (the shared border runs mostly
+-- through the Rub' al Khali/Empty Quarter, no tourist road), so Salalah ->
+-- AlUla is flown. Oman-UAE is the opposite — a real, commonly used land
+-- crossing at Al Ain/Buraimi, right next to Nizwa/Jebel Akhdar — so Abu
+-- Dhabi and Dubai are a natural overland detour there, not a flight.
 delete from stops where trip_id = (select id from trips where title in ('Oman', 'Arabia'));
 insert into stops (trip_id, name, lat, lng, order_index, notes, travel_mode)
 select id, s.name, s.lat, s.lng, s.order_index, s.notes, s.travel_mode
 from trips, (values
-  ('Vienna',        48.2082, 16.3738, 0, 'Home base.',                       'ground'),
-  ('Muscat',        23.5859, 58.4059, 1, 'Fly in from Vienna.',              'flight'),
-  ('Nizwa',         22.9333, 57.5333, 2, null,                               'ground'),
-  ('Jebel Akhdar',  23.0667, 57.6667, 3, null,                               'ground'),
-  ('Wahiba Sands',  22.0833, 58.5000, 4, null,                               'ground'),
-  ('Salalah',       17.0151, 54.0924, 5, null,                               'ground'),
-  ('AlUla',         26.6097, 37.9153, 6, 'Fly on to Saudi Arabia.',          'flight'),
-  ('Jeddah',        21.4858, 39.1925, 7, null,                               'ground'),
-  ('Riyadh',        24.7136, 46.6753, 8, null,                               'ground'),
-  ('Vienna',        48.2082, 16.3738, 9, 'Fly home from Riyadh.',            'flight')
+  ('Vienna',        48.2082, 16.3738,  0, 'Home base.',                       'ground'),
+  ('Muscat',        23.5859, 58.4059,  1, 'Fly in from Vienna.',              'flight'),
+  ('Nizwa',         22.9333, 57.5333,  2, null,                               'ground'),
+  ('Jebel Akhdar',  23.0667, 57.6667,  3, null,                               'ground'),
+  ('Abu Dhabi',     24.4539, 54.3773,  4, 'Land crossing via Al Ain.',        'ground'),
+  ('Dubai',         25.2048, 55.2708,  5, null,                               'ground'),
+  ('Wahiba Sands',  22.0833, 58.5000,  6, 'Back into Oman.',                  'ground'),
+  ('Salalah',       17.0151, 54.0924,  7, null,                               'ground'),
+  ('AlUla',         26.6097, 37.9153,  8, 'Fly on to Saudi Arabia.',          'flight'),
+  ('Jeddah',        21.4858, 39.1925,  9, null,                               'ground'),
+  ('Riyadh',        24.7136, 46.6753, 10, null,                               'ground'),
+  ('Vienna',        48.2082, 16.3738, 11, 'Fly home from Riyadh.',            'flight')
 ) as s(name, lat, lng, order_index, notes, travel_mode)
 where trips.title in ('Oman', 'Arabia');
 
@@ -92,7 +99,7 @@ update trips set
 
 update trips set
   title = 'Arabia',
-  description = 'Vienna-Muscat-Nizwa-Jebel Akhdar-Wahiba Sands-Salalah-AlUla-Jeddah-Riyadh-Vienna'
+  description = 'Vienna-Muscat-Nizwa-Jebel Akhdar-Abu Dhabi-Dubai-Wahiba Sands-Salalah-AlUla-Jeddah-Riyadh-Vienna'
   where title in ('Oman', 'Arabia');
 
 update trips set
