@@ -37,13 +37,15 @@ is wired up (below), it switches to real data + character login automatically.
    the deployed build needs them at build time, same as `.env.local` locally.
 5. Sign in once (so your `profiles` row exists — see "Character accounts"
    below for how login actually works), then run
-   [supabase/archive/seed.sql](supabase/archive/seed.sql) **once** in the SQL
-   editor to load the group's actual trip data. Unlike `schema.sql` this is
-   **not** idempotent — running it twice creates duplicate trips. From then
-   on, use the in-app admin trip editor to add/change trips instead. (This
-   step is moot for the already-running app — `supabase/archive/` is
-   one-time scripts that have already been applied; it's only relevant if
-   you're ever setting up a brand-new Supabase project from scratch.)
+   [supabase/friends_trips.sql](supabase/friends_trips.sql) and
+   [supabase/solo_trips.sql](supabase/solo_trips.sql) **once each** in the
+   SQL editor to load the group's actual trip data. Unlike `schema.sql`
+   these are **not** idempotent — running them twice creates duplicate
+   trips. From then on, use the in-app admin trip editor to add/change trips
+   instead. (This step is moot for the already-running app — both files are
+   a record of one-time inserts that have already been applied; they're only
+   relevant if you're ever setting up a brand-new Supabase project from
+   scratch.)
 
 Restart `npm run dev` after creating `.env.local` — the app then requires
 picking a character + PIN and reads/writes real data with realtime updates.

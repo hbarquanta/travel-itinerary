@@ -350,6 +350,30 @@ as $$
   select is_admin from profiles where id = auth.uid();
 $$;
 
+-- A Solo trip is private to whoever it's actually for — everyone else
+-- (except the admin, who manages all trip data) shouldn't see it at all,
+-- not just have it hidden behind a client-side category filter. Reuses
+-- trip_participants as the ownership signal rather than adding a new
+-- column: for a Solo trip that's exactly the one person it belongs to.
+-- Friends/Family trips are unaffected (visible to everyone, as before).
+create or replace function can_view_trip(tid uuid, uid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from trips t
+    where t.id = tid
+    and (
+      t.category <> 'Solo'
+      or is_admin_user(uid)
+      or exists (select 1 from trip_participants tp where tp.trip_id = t.id and tp.profile_id = uid)
+    )
+  );
+$$;
+
 -- profiles: any allowlisted user (i.e. anyone who already has a profile row)
 -- can read everyone's profile; you can only update your own row, and the
 -- update can't change your own is_admin (see current_is_admin above).
@@ -362,20 +386,23 @@ create policy profiles_update_self on profiles for update
   using (id = auth.uid())
   with check (id = auth.uid() and is_admin = current_is_admin());
 
--- trips: everyone allowlisted can read; only the admin can write.
+-- trips: everyone allowlisted can read, EXCEPT another person's Solo trip
+-- (see can_view_trip above); only the admin can write.
 drop policy if exists trips_select on trips;
 create policy trips_select on trips for select
-  using (is_allowlisted(auth.uid()));
+  using (is_allowlisted(auth.uid()) and can_view_trip(id, auth.uid()));
 
 drop policy if exists trips_write_admin on trips;
 create policy trips_write_admin on trips for all
   using (is_admin_user(auth.uid()))
   with check (is_admin_user(auth.uid()));
 
--- stops: same shape as trips.
+-- stops: same shape as trips, gated through the same Solo-trip check —
+-- otherwise a hidden trip's actual route/location data would still be
+-- readable directly by anyone who knew (or enumerated) its trip_id.
 drop policy if exists stops_select on stops;
 create policy stops_select on stops for select
-  using (is_allowlisted(auth.uid()));
+  using (is_allowlisted(auth.uid()) and can_view_trip(trip_id, auth.uid()));
 
 drop policy if exists stops_write_admin on stops;
 create policy stops_write_admin on stops for all
@@ -403,11 +430,13 @@ drop policy if exists ideas_delete_own on ideas;
 create policy ideas_delete_own on ideas for delete
   using (created_by = auth.uid() or is_admin_user(auth.uid()));
 
--- approvals: everyone allowlisted can read; a user can only manage their own
--- approval rows (tap your own avatar, not someone else's).
+-- approvals: everyone allowlisted can read (same Solo-trip gate as
+-- trips/stops — otherwise approvals would leak who's on a hidden trip);
+-- a user can only manage their own approval rows (tap your own avatar,
+-- not someone else's).
 drop policy if exists approvals_select on approvals;
 create policy approvals_select on approvals for select
-  using (is_allowlisted(auth.uid()));
+  using (is_allowlisted(auth.uid()) and can_view_trip(trip_id, auth.uid()));
 
 drop policy if exists approvals_insert on approvals;
 create policy approvals_insert on approvals for insert
@@ -417,11 +446,15 @@ drop policy if exists approvals_delete_own on approvals;
 create policy approvals_delete_own on approvals for delete
   using (user_id = auth.uid());
 
--- trip_participants: everyone allowlisted can read; only the admin can write
--- (who was actually on a trip is admin-curated, same as trips/stops).
+-- trip_participants: everyone allowlisted can read (same Solo-trip gate),
+-- only the admin can write (who was actually on a trip is admin-curated,
+-- same as trips/stops). can_view_trip queries this same table internally,
+-- but as a security-definer function that bypasses RLS for that internal
+-- lookup — same non-recursion trick as is_allowlisted/is_admin_user on
+-- profiles above.
 drop policy if exists trip_participants_select on trip_participants;
 create policy trip_participants_select on trip_participants for select
-  using (is_allowlisted(auth.uid()));
+  using (is_allowlisted(auth.uid()) and can_view_trip(trip_id, auth.uid()));
 
 drop policy if exists trip_participants_write_admin on trip_participants;
 create policy trip_participants_write_admin on trip_participants for all
