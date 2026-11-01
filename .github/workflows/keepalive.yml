@@ -1,17 +1,49 @@
 name: Keep Supabase Awake
 
+# Free-tier Supabase projects pause after ~7 days without API activity, which
+# takes the whole map offline. This pings the REST API twice a week.
+#
+# GitHub also disables scheduled workflows after 60 days without a commit,
+# which silently killed this ping once before (Jul 16 -> Sep 14, 2026). The
+# last step re-enables this workflow through the API on every run, which
+# resets that 60-day timer without needing any commits.
+
 on:
   schedule:
     - cron: '0 8 * * 1,4'
   workflow_dispatch:
+
+permissions:
+  actions: write
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - name: Query trips table to register API activity
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
-          curl -sf "${{ secrets.VITE_SUPABASE_URL }}/rest/v1/trips?select=id&limit=1" \
-            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
-            -o /dev/null
+          host="${SUPABASE_URL#https://}"
+          for attempt in 1 2 3; do
+            status=$(curl -s -m 30 -o /dev/null -w '%{http_code}' \
+              "$SUPABASE_URL/rest/v1/trips?select=id&limit=1" \
+              -H "apikey: $SUPABASE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_KEY") || status="000"
+            echo "Attempt $attempt: HTTP $status"
+            [ "$status" = "200" ] && exit 0
+            sleep 20
+          done
+          if ! getent hosts "$host" >/dev/null; then
+            echo "::error::Supabase host does not resolve: the project is most likely PAUSED. Restore it at https://supabase.com/dashboard (free projects can only be restored within 90 days)."
+          else
+            echo "::error::Supabase answered HTTP $status. Check the project dashboard and the VITE_SUPABASE_* repo secrets."
+          fi
+          exit 1
+
+      - name: Reset GitHub's 60-day inactivity timer
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keepalive.yml/enable"
